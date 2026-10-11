@@ -1,5 +1,4 @@
 const readline = require('readline');
-const path = require('path');
 const {
     ContainerBuilder,
     TextDisplayBuilder,
@@ -7,7 +6,6 @@ const {
     SeparatorSpacingSize,
     MessageFlagsBitField,
     EmbedBuilder,
-    AttachmentBuilder,
 } = require('discord.js');
 const { crearPlantillaTest } = require('./utils/testPlantilla');
 const { crearVetoTest } = require('./utils/testVeto');
@@ -204,12 +202,12 @@ function initConsole(client) {
                     console.log('[Consola] Uso: enviardm <id_usuario> <mensaje> (ej: enviardm 991791054535802880 Hola, bienvenido)');
                 } else {
                     const user = await client.users.fetch(id);
-                    const imagePath = path.join(__dirname, '..', 'convocatoriasimagen.png');
-                    const attachment = new AttachmentBuilder(imagePath, { name: 'logo.png' });
+                    const emojiId = (process.env.emoji_oposiciones || '').match(/\d{15,21}/)?.[0];
+                    const iconURL = emojiId ? `https://cdn.discordapp.com/emojis/${emojiId}.png` : undefined;
                     const embed = new EmbedBuilder()
-                        .setAuthor({ name: 'COMUNICADO', iconURL: 'attachment://logo.png' })
+                        .setAuthor(iconURL ? { name: 'COMUNICADO', iconURL } : { name: `${process.env.emoji_oposiciones || ''} COMUNICADO` })
                         .setDescription(mensaje);
-                    await user.send({ embeds: [embed], files: [attachment] });
+                    await user.send({ embeds: [embed] });
                     console.log(`[Consola] OK: MD enviado a ${user.tag} (${id}).`);
                 }
 
