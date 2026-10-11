@@ -196,7 +196,7 @@ function initConsole(client) {
                 const diasRaw = args.find(a => /^\d+$/.test(a) && a !== arg) || args.find((a, i) => i > 0 && /^\d+$/.test(a));
                 const dias = diasRaw ? parseInt(diasRaw, 10) : 1;
                 const vetoId = await crearVetoTest(client, userId, dias);
-                console.log(`[Consola] OK: veto de prueba ${vetoId} enviado (usuario ${userId}, ${días ?? dias} día(s)).`);
+                console.log(`[Consola] OK: veto de prueba ${vetoId} enviado (usuario ${userId}, ${dias} día(s)).`);
             } else if (command === 'testtramiteck') {
                 const id = arg;
                 if (!/^\d{15,21}$/.test(id)) {
