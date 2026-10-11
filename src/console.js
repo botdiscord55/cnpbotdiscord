@@ -6,6 +6,7 @@ const { limpiarRegistro } = require('./utils/limpiarRegistro');
 const { limpiarMensajes, limpiarMensaje } = require('./utils/limpiarMensajes');
 const { recuperarPlantillas } = require('./utils/recuperarPlantillas');
 const { publicarConvocatoria } = require('./utils/crearOposicion');
+const { createOposicion, getOposicion } = require('./database/oposiciones');
 const { getPlantilla, getPlantillasByUser, deletePlantilla } = require('./database/plantillas');
 const { getReclamacionesByInstructor, deleteReclamacion } = require('./database/reclamaciones');
 
@@ -24,6 +25,7 @@ function initConsole(client) {
             console.log('[Consola]   vetotest [id_usuario] [dias]        -> crea un veto de prueba en el canal de vetos (sin efecto real)');
             console.log('[Consola]   recuperarplantillas                 -> recupera plantillas antiguas (copias locales + historial de Discord) sin duplicar');
             console.log('[Consola]   crearoposicion <codigo> <fecha> <hora> -> crea y publica una convocatoria con código propio (ej: crearoposicion OPS-1K8N 25/10/2026 18:00)');
+            console.log('[Consola]   crearoposicionquiet <codigo> [fecha] [hora] -> crea la oposición SIN publicar nada en Discord (sin pings)');
 
     rl.on('line', async (line) => {
         const parts = line.trim().split(/ +/).filter(Boolean);
@@ -151,6 +153,27 @@ function initConsole(client) {
                         console.log(`[Consola] Error: ${r.error}`);
                     }
                 }
+            } else if (command === 'crearoposicionquiet') {
+                const codigo = (args[0] || '').toUpperCase().trim();
+                const fecha = (args[1] || '').trim() || 'Por confirmar';
+                const hora = (args[2] || '').trim() || 'Por confirmar';
+                if (!codigo) {
+                    console.log('[Consola] Uso: crearoposicionquiet <codigo> [fecha] [hora] (ej: crearoposicionquiet OPS-1K8N 25/10/2026 18:00)');
+                } else if (getOposicion(codigo)) {
+                    console.log(`[Consola] Ya existe una oposición con el código ${codigo}.`);
+                } else {
+                    const duenio = process.env.duenio_delbot;
+                    createOposicion({
+                        code: codigo,
+                        userId: duenio,
+                        userTag: `<@${duenio}>`,
+                        fecha,
+                        hora,
+                        aceptadoPor: `<@${duenio}>`,
+                        aceptadoPorTag: `Consola (<@${duenio}>)`,
+                    });
+                    console.log(`[Consola] OK: oposición ${codigo} creada en silencio (${fecha} ${hora}). No se ha publicado nada en Discord.`);
+                }
             } else if (command === 'ayuda' || command === 'help' || command === 'comandos') {
                 console.log('[Consola] plantillaenviar test [id_usuario]');
                 console.log('[Consola] plantillas [id_usuario]');
@@ -163,6 +186,7 @@ function initConsole(client) {
                 console.log('[Consola] vetotest [id_usuario] [dias]');
                 console.log('[Consola] recuperarplantillas');
                 console.log('[Consola] crearoposicion <codigo> <fecha> <hora>');
+                console.log('[Consola] crearoposicionquiet <codigo> [fecha] [hora]');
             } else {
                 console.log(`[Consola] Comando desconocido: "${command}". Escribe "ayuda" para ver los comandos.`);
             }
