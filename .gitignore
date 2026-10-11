@@ -5,6 +5,7 @@ node_modules/
 # Datos locales del bot (viven en el servidor de hosting, no en el repo)
 src/database/*.json
 src/database/backups/
+src/database/archivos/
 *.log
 
 # Pruebas locales (no subir)

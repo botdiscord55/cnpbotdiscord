@@ -23,12 +23,37 @@ const ESTADO_META = {
     retirada: { label: 'Retirada', plural: 'Retiradas', emoji: () => process.env.emoji_greytick },
 };
 
-const PERIODOS = [
-    { value: 'semana', label: 'Última semana', dias: 7 },
-    { value: 'mes', label: 'Último mes', dias: 30 },
-    { value: '3meses', label: 'Últimos 3 meses', dias: 90 },
-    { value: 'total', label: 'Todo el tiempo', dias: null },
-];
+const MESES_NOMBRE = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+function claveMes(iso) {
+    const d = new Date(iso || 0);
+    if (isNaN(d.getTime())) return null;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function labelMes(clave) {
+    const [y, m] = clave.split('-');
+    return `${MESES_NOMBRE[parseInt(m, 10) - 1]} ${y}`;
+}
+
+function periodosDe(plantillas) {
+    const mapa = new Map();
+    for (const p of plantillas) {
+        const clave = claveMes(p.fechaCreacion);
+        if (!clave) continue;
+        mapa.set(clave, (mapa.get(clave) || 0) + 1);
+    }
+    const meses = [...mapa.entries()]
+        .sort((a, b) => b[0].localeCompare(a[0]))
+        .slice(0, 24)
+        .map(([clave, n]) => ({ value: clave, label: `${labelMes(clave)} (${n})` }));
+    return [...meses, { value: 'total', label: 'Todo el tiempo' }];
+}
+
+function filtrarPeriodo(plantillas, period) {
+    if (period === 'total' || !/^\d{4}-\d{2}$/.test(period)) return plantillas;
+    return plantillas.filter(p => claveMes(p.fechaCreacion) === period);
+}
 
 const ORDEN_ESTADOS = ['aceptada', 'denegada', 'pendiente', 'reclamada', 'retirada'];
 
@@ -203,9 +228,11 @@ function agruparPorEstado(plantillas) {
 }
 
 function buildRegistrosCard(targetUserId, periodRaw, pageRaw) {
-    const period = PERIODOS.some(p => p.value === periodRaw) ? periodRaw : 'total';
-    const def = PERIODOS.find(p => p.value === period);
-    const filtradas = filtrarPeriodo(getPlantillasByUser(targetUserId), period);
+    const todas = getPlantillasByUser(targetUserId);
+    const periodos = periodosDe(todas);
+    const period = periodos.some(p => p.value === periodRaw) ? periodRaw : 'total';
+    const labelPeriodo = period === 'total' ? 'Todo el tiempo' : labelMes(period);
+    const filtradas = filtrarPeriodo(todas, period);
 
     const grupos = agruparPorEstado(filtradas);
     const ordenadas = grupos.flatMap(g => g.items);
@@ -240,12 +267,12 @@ function buildRegistrosCard(targetUserId, periodRaw, pageRaw) {
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                lines.length ? lines.join('\n') : `> <:${process.env.emoji_greytick}> Sin registros en: **${def.label}**.`
+                lines.length ? lines.join('\n') : `> <:${process.env.emoji_greytick}> Sin registros en: **${labelPeriodo}**.`
             )
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                `-# Página **${page + 1}/${pages}** · ${filtradas.length} registros — ${def.label}`
+                `-# Página **${page + 1}/${pages}** · ${filtradas.length} registros — ${labelPeriodo}`
             )
         )
         .addTextDisplayComponents(
@@ -256,7 +283,7 @@ function buildRegistrosCard(targetUserId, periodRaw, pageRaw) {
                 new StringSelectMenuBuilder()
                     .setCustomId(`plantillas_period_${targetUserId}`)
                     .setPlaceholder('Filtrar por periodo')
-                    .addOptions(PERIODOS.map(p => ({ label: p.label, value: p.value, default: p.value === period })))
+                    .addOptions(periodos.map(p => ({ label: p.label, value: p.value, default: p.value === period })))
             )
         )
         .addActionRowComponents(
@@ -408,5 +435,4 @@ module.exports = {
     exportarVertotalJSON,
     esAgenteCnp,
     esInstructor,
-    PERIODOS,
 };
