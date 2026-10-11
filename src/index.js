@@ -115,7 +115,14 @@ async function loginConReintentos() {
             }
             if (intento === 1) {
                 try {
-                    const resp = await fetch('https://discord.com/api/v10/gateway');
+                    const { relayBase } = require('./proxy');
+                    let resp;
+                    if (relayBase) {
+                        const r = await fetch(`${relayBase}/api/v10/gateway`, { headers: { 'X-Relay-Key': require('./proxy').relayKey || 'enp-cnp-7d4f1a' } });
+                        resp = r;
+                    } else {
+                        resp = await fetch('https://discord.com/api/v10/gateway');
+                    }
                     console.error(`[Consola] Diagnóstico: GET /api/v10/gateway -> HTTP ${resp.status}`);
                 } catch (pe) {
                     const pc = (pe && pe.cause) || pe;

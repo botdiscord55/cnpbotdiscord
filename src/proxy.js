@@ -55,7 +55,7 @@ if (relayBase) {
   });
 
   console.log(`[Relay] Discord vía relay: ${relayBase}`);
-  module.exports = { restOptions: { makeRequest: relayMakeRequest }, proxyAgent: null, relayBase };
+  module.exports = { restOptions: { makeRequest: relayMakeRequest }, proxyAgent: null, relayBase, relayKey };
 } else if (proxyUrl) {
   // --- Modo proxy CONNECT (undici + ws) ---
   const { ProxyAgent, setGlobalDispatcher } = require('undici');
