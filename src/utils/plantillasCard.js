@@ -9,7 +9,7 @@ const {
     StringSelectMenuBuilder,
 } = require('discord.js');
 const { getPlantillasByUser, getAllPlantillas } = require('../database/plantillas');
-const { contarReclamaciones, getAllReclamaciones } = require('../database/reclamaciones');
+const { getAllReclamaciones } = require('../database/reclamaciones');
 
 const POR_PAGINA = 5;
 
@@ -100,38 +100,18 @@ async function esInstructor(ctx) {
 }
 
 function resumenCounts(counts) {
-    return Object.entries(counts)
-        .filter(([key, n]) => n > 0 || key === 'aceptada' || key === 'denegada')
-        .map(([key, n]) => {
-            const meta = ESTADO_META[key] || { plural: key, emoji: () => process.env.emoji_greytick };
-            return `<:${meta.emoji()}> ${meta.plural} **${n}**`;
-        })
-        .join(' · ');
-}
-
-function instructorBlock(targetUserId) {
-    const { total, counts, ultima } = contarReclamaciones(targetUserId);
-    if (!total) return null;
-
-    const partes = [`📋 **${total}**`];
-    if (counts.aceptada) partes.push(`<:${process.env.emoji_greentick}> Aceptadas **${counts.aceptada}**`);
+    const partes = [`<:${process.env.emoji_greentick}> Aceptadas **${counts.aceptada || 0}**`];
     if (counts.denegada) partes.push(`<:${process.env.emoji_redtick}> Denegadas **${counts.denegada}**`);
-    if (counts.reclamada) partes.push(`En curso **${counts.reclamada}**`);
-    if (counts.retirada) partes.push(`Retiradas **${counts.retirada}**`);
-    if (counts.cancelada) partes.push(`Canceladas **${counts.cancelada}**`);
-
-    const ultimaLinea = ultima
-        ? `\n-# Última revisión: ${formatFecha(ultima.fechaResolucion || ultima.fechaReclamacion)} — plantilla de <@${ultima.userId}>`
-        : '';
-
-    return `**Como instructor**\n> Reclamadas: ${partes.join(' · ')}${ultimaLinea}`;
+    if (counts.pendiente) partes.push(`<:${process.env.emoji_yellowtick}> Pendientes **${counts.pendiente}**`);
+    if (counts.reclamada) partes.push(`Reclamadas **${counts.reclamada}**`);
+    if (counts.retirada) partes.push(`<:${process.env.emoji_greytick}> Retiradas **${counts.retirada}**`);
+    return partes.join(' — ');
 }
 
 function buildPlantillasCard(targetUserId, opts = {}) {
     const plantillas = getPlantillasByUser(targetUserId);
-    const instr = opts.instructor ? instructorBlock(targetUserId) : null;
 
-    if (!plantillas.length && !instr) {
+    if (!plantillas.length) {
         const container = new ContainerBuilder()
             .setAccentColor(0xfee75c)
             .addTextDisplayComponents(
@@ -157,28 +137,11 @@ function buildPlantillasCard(targetUserId, opts = {}) {
 
     const color = counts.denegada > counts.aceptada ? 0xed4245 : counts.aceptada > 0 ? 0x57f287 : 0xfee75c;
 
-    const MAX_LISTA = 24;
-    const listLines = [];
-    let ocultas = 0;
-    const estadosPresentes = [...ORDEN_ESTADOS];
-    for (const p of plantillas) {
-        if (!ORDEN_ESTADOS.includes(p.estado) && !estadosPresentes.includes(p.estado)) estadosPresentes.push(p.estado);
-    }
-
-    for (const estado of estadosPresentes) {
-        const items = plantillas.filter(p => (p.estado || '') === estado);
-        if (!items.length) continue;
-        const meta = ESTADO_META[estado] || { plural: estado, emoji: () => process.env.emoji_greytick };
-        const hueco = MAX_LISTA - listLines.length;
-        if (hueco <= 0) { ocultas += items.length; continue; }
-        listLines.push(`**<:${meta.emoji()}> ${meta.plural} (${items.length})**`);
-        const tomados = Math.min(items.length, hueco - 1);
-        for (let i = 0; i < tomados; i++) {
-            const p = items[i];
-            listLines.push(`> ${formatFecha(fechaDe(p))}${quienPor(p)}`);
-        }
-        ocultas += items.length - tomados;
-    }
+    const ultimos = plantillas.slice(0, 3);
+    const registroLines = ultimos.map((p, i) => {
+        const meta = ESTADO_META[p.estado] || { plural: p.estado, emoji: () => process.env.emoji_greytick };
+        return `${i + 1}. <:${meta.emoji()}> **${meta.plural}** — ${formatFecha(fechaDe(p))}${quienPor(p)}`;
+    });
 
     const container = new ContainerBuilder()
         .setAccentColor(color)
@@ -187,55 +150,28 @@ function buildPlantillasCard(targetUserId, opts = {}) {
         )
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-        );
-
-    if (plantillas.length) {
-        container.addTextDisplayComponents(
+        )
+        .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                `> **Usuario:** <@${targetUserId}> (\`${targetUserId}\`)\n` +
-                `> ${resumenCounts(counts)}\n` +
-                `-# Total de plantillas enviadas: **${plantillas.length}**`
+                `**Usuario:** <@${targetUserId}> (\`${targetUserId}\`)\n` +
+                `${resumenCounts(counts)}\n` +
+                `-# Total de plantillas aceptadas: **${counts.aceptada || 0}**`
             )
-        );
-    } else {
-        container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`> <:${process.env.emoji_yellowtick}> <@${targetUserId}> no tiene ninguna plantilla enviada.`)
-        );
-    }
-
-    if (instr) {
-        container
-            .addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**REGISTRO**\n` +
+                `-# Los ${ultimos.length} registros más recientes${plantillas.length > ultimos.length ? ` de ${plantillas.length} en total` : ''}:\n` +
+                registroLines.join('\n')
             )
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(instr)
-            );
-    }
-
-    let notaAnadida = false;
-
-    if (plantillas.length) {
-        container
-            .addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
-            )
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(listLines.join('\n'))
-            );
-
-        if (ocultas) {
-            container.addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`-# ...y **${ocultas}** plantilla(s) más (púlsale **Ver registros** para verlas todas).`)
-            );
-        }
-
-        container.addTextDisplayComponents(
+        )
+        .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(NOTA_BORRADO)
-        );
-        notaAnadida = true;
-
-        container.addActionRowComponents(
+        )
+        .addActionRowComponents(
             new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId(`plantillas_reg_${targetUserId}`)
@@ -243,13 +179,6 @@ function buildPlantillasCard(targetUserId, opts = {}) {
                     .setStyle(ButtonStyle.Primary)
             )
         );
-    }
-
-    if (!notaAnadida) {
-        container.addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(NOTA_BORRADO)
-        );
-    }
 
     return { container, plantillas, counts };
 }
