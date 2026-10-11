@@ -1,4 +1,11 @@
 const readline = require('readline');
+const {
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    SeparatorSpacingSize,
+    MessageFlagsBitField,
+} = require('discord.js');
 const { crearPlantillaTest } = require('./utils/testPlantilla');
 const { crearVetoTest } = require('./utils/testVeto');
 const { limpiarTest } = require('./utils/limpiarTest');
@@ -181,35 +188,65 @@ function initConsole(client) {
                     console.log('[Consola] Uso: testtramiteck <id_usuario> (ej: testtramiteck 991791054535802880)');
                 } else {
                     try {
-                        const member = await client.guilds.cache.first().members.fetch(id);
+                        const guild = client.guilds.cache.first();
+                        const member = await guild.members.fetch(id);
                         const nick = member.nickname || member.user.username;
                         const nombreAnterior = nick.includes('|') ? nick.split('|').slice(1).join('|').trim() : nick;
                         const rolSinPlantilla = process.env.rol_sinplantilla;
-                        const rolesToKeep = [rolSinPlantilla, client.guilds.cache.first().id].filter(Boolean);
+                        const rolesToKeep = [rolSinPlantilla, guild.id].filter(Boolean);
 
-                        const quitados = [];
-                        const conservados = [];
+                        const rolesQuitados = [];
                         for (const [roleId, role] of member.roles.cache) {
                             if (rolesToKeep.includes(roleId)) continue;
-                            quitados.push(`${role.name} (\`${roleId}\`)`);
-                        }
-                        if (rolSinPlantilla && member.roles.cache.has(rolSinPlantilla)) {
-                            conservados.push(`Sin Plantilla (\`${rolSinPlantilla}\`)`);
+                            rolesQuitados.push(`${role.name} (\`${roleId}\`)`);
                         }
 
-                        console.log(`[Consola] TEST CK — ${member.user.tag} (${id})`);
-                        console.log(`  Nick actual: ${nick}`);
-                        console.log(`  Nombre anterior (extraído): ${nombreAnterior}`);
-                        console.log(`  Nick resultante sería: SP | <nombre_nuevo>`);
-                        console.log(`  Roles que se quitarían (${quitados.length}):`);
-                        if (quitados.length) quitados.forEach(r => console.log(`    - ${r}`));
-                        else console.log('    (ninguno)');
-                        console.log(`  Roles que se conservarían (${conservados.length}):`);
-                        if (conservados.length) conservados.forEach(r => console.log(`    - ${r}`));
-                        else console.log('    (ninguno)');
-                        console.log('[Consola] TEST: no se ha modificado nada.');
+                        const now = new Date();
+                        const time = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+                        const date = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+
+                        const canalCK = await client.channels.fetch(process.env.canalregistro_ck);
+
+                        const container = new ContainerBuilder()
+                            .setAccentColor(0xfee75c)
+                            .addTextDisplayComponents(
+                                new TextDisplayBuilder().setContent('### 🧪 TEST TRAMITACIÓN DE CHARACTER KILL')
+                            )
+                            .addSeparatorComponents(
+                                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
+                            )
+                            .addTextDisplayComponents(
+                                new TextDisplayBuilder().setContent(
+                                    `**Usuario:** <@${id}> (\`${id}\`)\n` +
+                                    `**Nombre anterior:** ${nombreAnterior}\n` +
+                                    `**Nombre nuevo:** <nombre_nuevo>\n` +
+                                    `**Tramitado por:** Consola`
+                                )
+                            )
+                            .addSeparatorComponents(
+                                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
+                            )
+                            .addTextDisplayComponents(
+                                new TextDisplayBuilder().setContent(
+                                    `> **Roles que se quitarían**\n` +
+                                    (rolesQuitados.length > 0
+                                        ? rolesQuitados.map(r => `<:${process.env.emoji_greytick}> ${r}`).join('\n')
+                                        : `<:${process.env.emoji_greytick}> Ninguno`)
+                                )
+                            )
+                            .addSeparatorComponents(
+                                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
+                            )
+                            .addTextDisplayComponents(
+                                new TextDisplayBuilder().setContent(
+                                    `-# ${date} a las ${time} · **TEST — no se ha modificado nada**`
+                                )
+                            );
+
+                        await canalCK.send({ components: [container], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
+                        console.log(`[Consola] Test CK realizado a ${member.user.tag} (${id}).`);
                     } catch (e) {
-                        console.log(`[Consola] No se pudo obtener el miembro ${id}: ${e.message}`);
+                        console.log(`[Consola] Error: ${e.message}`);
                     }
                 }
             } else if (command === 'ayuda' || command === 'help' || command === 'comandos') {
