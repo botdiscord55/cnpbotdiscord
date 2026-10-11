@@ -27,6 +27,7 @@ function initConsole(client) {
             console.log('[Consola]   crearoposicion <codigo> <fecha> <hora> -> crea y publica una convocatoria con código propio (ej: crearoposicion OPS-1K8N 25/10/2026 18:00)');
             console.log('[Consola]   crearoposicionquiet <codigo> [fecha] [hora] -> crea la oposición SIN publicar nada en Discord (sin pings)');
             console.log('[Consola]   testid <id>                            -> test: recibe una id y no hace nada');
+            console.log('[Consola]   testtramiteck <id_usuario>             -> test: simula un CK mostrando lo que haría, sin tocar nada');
 
     rl.on('line', async (line) => {
         const parts = line.trim().split(/ +/).filter(Boolean);
@@ -182,6 +183,43 @@ function initConsole(client) {
                 } else {
                     console.log(`[Consola] Test: id recibida "${id}". No se ha hecho nada.`);
                 }
+            } else if (command === 'testtramiteck') {
+                const id = arg;
+                if (!/^\d{15,21}$/.test(id)) {
+                    console.log('[Consola] Uso: testtramiteck <id_usuario> (ej: testtramiteck 991791054535802880)');
+                } else {
+                    try {
+                        const member = await client.guilds.cache.first().members.fetch(id);
+                        const nick = member.nickname || member.user.username;
+                        const nombreAnterior = nick.includes('|') ? nick.split('|').slice(1).join('|').trim() : nick;
+                        const rolSinPlantilla = process.env.rol_sinplantilla;
+                        const rolesToKeep = [rolSinPlantilla, client.guilds.cache.first().id].filter(Boolean);
+
+                        const quitados = [];
+                        const conservados = [];
+                        for (const [roleId, role] of member.roles.cache) {
+                            if (rolesToKeep.includes(roleId)) continue;
+                            quitados.push(`${role.name} (\`${roleId}\`)`);
+                        }
+                        if (rolSinPlantilla && member.roles.cache.has(rolSinPlantilla)) {
+                            conservados.push(`Sin Plantilla (\`${rolSinPlantilla}\`)`);
+                        }
+
+                        console.log(`[Consola] TEST CK — ${member.user.tag} (${id})`);
+                        console.log(`  Nick actual: ${nick}`);
+                        console.log(`  Nombre anterior (extraído): ${nombreAnterior}`);
+                        console.log(`  Nick resultante sería: SP | <nombre_nuevo>`);
+                        console.log(`  Roles que se quitarían (${quitados.length}):`);
+                        if (quitados.length) quitados.forEach(r => console.log(`    - ${r}`));
+                        else console.log('    (ninguno)');
+                        console.log(`  Roles que se conservarían (${conservados.length}):`);
+                        if (conservados.length) conservados.forEach(r => console.log(`    - ${r}`));
+                        else console.log('    (ninguno)');
+                        console.log('[Consola] TEST: no se ha modificado nada.');
+                    } catch (e) {
+                        console.log(`[Consola] No se pudo obtener el miembro ${id}: ${e.message}`);
+                    }
+                }
             } else if (command === 'ayuda' || command === 'help' || command === 'comandos') {
                 console.log('[Consola] plantillaenviar test [id_usuario]');
                 console.log('[Consola] plantillas [id_usuario]');
@@ -196,6 +234,7 @@ function initConsole(client) {
                 console.log('[Consola] crearoposicion <codigo> <fecha> <hora>');
                 console.log('[Consola] crearoposicionquiet <codigo> [fecha] [hora]');
                 console.log('[Consola] testid <id>');
+                console.log('[Consola] testtramiteck <id_usuario>');
             } else {
                 console.log(`[Consola] Comando desconocido: "${command}". Escribe "ayuda" para ver los comandos.`);
             }
