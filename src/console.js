@@ -38,6 +38,9 @@ function initConsole(client) {
     console.log('[Consola]   crearoposicion <código> <fecha> <hora>      -> crea y publica convocatoria');
     console.log('[Consola]   crearoposicionquiet <código> [fecha] [hora] -> crea sin publicar nada (sin pings)');
     console.log('');
+    console.log('[Consola] ─── MENSAJES ─────────────────────────────────────');
+    console.log('[Consola]   enviardm <id_usuario> <mensaje>     -> envía un MD a un usuario');
+    console.log('');
     console.log('[Consola] ─── TEST ──────────────────────────────────────────');
     console.log('[Consola]   vetotest [id_usuario] [días]          -> veto de prueba en el canal de vetos');
     console.log('[Consola]   testtramiteck <id_usuario>            -> envía tarjeta CK al canal de registro sin tocar nada');
@@ -190,6 +193,18 @@ function initConsole(client) {
                     console.log(`[Consola] OK: oposición ${codigo} creada en silencio (${fecha} ${hora}).`);
                 }
 
+            // ─── MENSAJES ───
+            } else if (command === 'enviardm') {
+                const id = arg;
+                const mensaje = args.slice(1).join(' ').trim();
+                if (!/^\d{15,21}$/.test(id) || !mensaje) {
+                    console.log('[Consola] Uso: enviardm <id_usuario> <mensaje> (ej: enviardm 991791054535802880 Hola, bienvenido)');
+                } else {
+                    const user = await client.users.fetch(id);
+                    await user.send(mensaje);
+                    console.log(`[Consola] OK: MD enviado a ${user.tag} (${id}).`);
+                }
+
             // ─── TEST ───
             } else if (command === 'vetotest') {
                 const userId = arg || process.env.duenio_delbot;
@@ -276,6 +291,9 @@ function initConsole(client) {
                 console.log('[Consola] ─── OPOSICIONES ────────────────────────────────────');
                 console.log('[Consola]   crearoposicion <código> <fecha> <hora>');
                 console.log('[Consola]   crearoposicionquiet <código> [fecha] [hora]');
+                console.log('');
+                console.log('[Consola] ─── MENSAJES ─────────────────────────────────────');
+                console.log('[Consola]   enviardm <id_usuario> <mensaje>');
                 console.log('');
                 console.log('[Consola] ─── TEST ──────────────────────────────────────────');
                 console.log('[Consola]   vetotest [id_usuario] [días]');
