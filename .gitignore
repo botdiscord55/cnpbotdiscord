@@ -9,7 +9,10 @@ src/database/backups/
 
 # Pruebas locales (no subir)
 testnet.js
+test-ws.js
 local-relay.js
 mini-proxy.js
 Iniciar Proxy.bat
+.wrangler/
+wrangler.log
 
