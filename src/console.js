@@ -227,19 +227,14 @@ function initConsole(client) {
                             .addTextDisplayComponents(
                                 new TextDisplayBuilder().setContent('### TRAMITACIÓN DE CHARACTER KILL')
                             )
-                            .addSeparatorComponents(
-                                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
-                            )
                             .addTextDisplayComponents(
                                 new TextDisplayBuilder().setContent(
-                                    `**Usuario:** <@${id}> (\`${id}\`)\n` +
-                                    `**Nombre anterior:** ${nombreAnterior}\n` +
-                                    `**Nombre nuevo:** Nuevo Nombre\n` +
-                                    `**Tramitado por:** Consola`
+                                    `**Usuario:** <@${id}> (\`${id}\`) · **Tramitado por:** Consola\n` +
+                                    `**Nombre anterior:** ${nombreAnterior} → **Nombre nuevo:** Nuevo Nombre`
                                 )
                             )
                             .addSeparatorComponents(
-                                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
+                                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
                             )
                             .addTextDisplayComponents(
                                 new TextDisplayBuilder().setContent(
@@ -248,9 +243,6 @@ function initConsole(client) {
                                         ? rolesQuitados.map(r => `<:${process.env.emoji_redtick}> ${r}`).join('\n')
                                         : `<:${process.env.emoji_greytick}> Ninguno`)
                                 )
-                            )
-                            .addSeparatorComponents(
-                                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
                             )
                             .addTextDisplayComponents(
                                 new TextDisplayBuilder().setContent(

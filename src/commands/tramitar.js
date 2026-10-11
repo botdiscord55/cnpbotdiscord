@@ -69,30 +69,22 @@ module.exports = {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent('### TRAMITACIÓN DE CHARACTER KILL')
             )
-            .addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
-            )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `**Usuario:** <@${targetUser.id}> (\`${targetUser.id}\`)\n` +
-                    `**Nombre anterior:** ${nombreAnterior}\n` +
-                    `**Nombre nuevo:** ${nombreNuevo}\n` +
-                    `**Tramitado por:** <@${interaction.user.id}> (\`${interaction.user.id}\`)`
+                    `**Usuario:** <@${targetUser.id}> (\`${targetUser.id}\`) · **Tramitado por:** <@${interaction.user.id}>\n` +
+                    `**Nombre anterior:** ${nombreAnterior} → **Nombre nuevo:** ${nombreNuevo}`
                 )
             )
             .addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
+                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `> **Roles quitados**\n` +
+                    `> **Roles revocados**\n` +
                     (rolesQuitados.length > 0
                         ? rolesQuitados.map(r => `<:${process.env.emoji_redtick}> ${r}`).join('\n')
                         : `<:${process.env.emoji_greytick}> Ninguno`)
                 )
-            )
-            .addSeparatorComponents(
-                new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
