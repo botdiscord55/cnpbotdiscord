@@ -20,20 +20,30 @@ const { getReclamacionesByInstructor, deleteReclamacion } = require('./database/
 function initConsole(client) {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-    console.log('[Consola] Comandos disponibles:');
-    console.log('[Consola]   plantillaenviar test [id_usuario]  -> crea una plantilla de prueba en el canal de registro (reclamable para probar, sin efectos reales)');
-    console.log('[Consola]   plantillas [id_usuario]            -> muestra el resumen de plantillas de un usuario');
-    console.log('[Consola]   reclamaciones [id_usuario]          -> muestra las reclamaciones de un instructor');
-    console.log('[Consola]   plantillaeliminar <id_plantilla>   -> borra una plantilla por su ID (aparece en la tarjeta)');
-    console.log('[Consola]   limpiartest                         -> borra sus mensajes de Discord y todos sus registros (plantillas, reclamaciones y vetos de prueba)');
-    console.log('[Consola]   limpiarregistro <id_usuario>        -> borra todos los registros y mensajes de Discord de ese usuario (plantillas, reclamaciones y vetos)');
-    console.log('[Consola]   limpiarmensajes <id_canal> <n>     -> borra los n últimos mensajes de un canal (1-500)');
-    console.log('[Consola]   limpiarmensaje <enlace|id>         -> borra un mensaje por su enlace, o <id_canal> <id_mensaje>, o solo su id');
-            console.log('[Consola]   vetotest [id_usuario] [dias]        -> crea un veto de prueba en el canal de vetos (sin efecto real)');
-            console.log('[Consola]   recuperarplantillas                 -> recupera plantillas antiguas (copias locales + historial de Discord) sin duplicar');
-            console.log('[Consola]   crearoposicion <codigo> <fecha> <hora> -> crea y publica una convocatoria con código propio (ej: crearoposicion OPS-1K8N 25/10/2026 18:00)');
-            console.log('[Consola]   crearoposicionquiet <codigo> [fecha] [hora] -> crea la oposición SIN publicar nada en Discord (sin pings)');
-            console.log('[Consola]   testtramiteck <id_usuario>             -> test: simula un CK mostrando lo que haría, sin tocar nada');
+    console.log('');
+    console.log('[Consola] ─── PLANTILLAS ─────────────────────────────────────');
+    console.log('[Consola]   plantillatest [id_usuario]          -> crea una plantilla de prueba en el canal de registro');
+    console.log('[Consola]   plantillas [id_usuario]             -> resumen de plantillas de un usuario');
+    console.log('[Consola]   reclamaciones [id_usuario]           -> reclamaciones de un instructor');
+    console.log('[Consola]   plantillaeliminar <id_plantilla>    -> borra una plantilla por su ID');
+    console.log('[Consola]   recuperarplantillas                  -> recupera plantillas antiguas sin duplicar');
+    console.log('');
+    console.log('[Consola] ─── LIMPIEZA ───────────────────────────────────────');
+    console.log('[Consola]   limpiartest                          -> borra todo lo de prueba (mensajes, plantillas, vetos)');
+    console.log('[Consola]   limpiarregistro <id_usuario>         -> borra todos los registros de un usuario');
+    console.log('[Consola]   limpiarmensajes <id_canal> <n>       -> borra los n últimos mensajes de un canal (1-500)');
+    console.log('[Consola]   limpiarmensaje <enlace|id>           -> borra un mensaje por enlace o ID');
+    console.log('');
+    console.log('[Consola] ─── OPOSICIONES ────────────────────────────────────');
+    console.log('[Consola]   crearoposicion <código> <fecha> <hora>      -> crea y publica convocatoria');
+    console.log('[Consola]   crearoposicionquiet <código> [fecha] [hora] -> crea sin publicar nada (sin pings)');
+    console.log('');
+    console.log('[Consola] ─── TEST ──────────────────────────────────────────');
+    console.log('[Consola]   vetotest [id_usuario] [días]          -> veto de prueba en el canal de vetos');
+    console.log('[Consola]   testtramiteck <id_usuario>            -> envía tarjeta CK al canal de registro sin tocar nada');
+    console.log('');
+    console.log('[Consola] Escribe "ayuda" para volver a ver esto.');
+    console.log('');
 
     rl.on('line', async (line) => {
         const parts = line.trim().split(/ +/).filter(Boolean);
@@ -47,10 +57,11 @@ function initConsole(client) {
         const arg = (args[0] || '').replace(/[^\d]/g, '');
 
         try {
-            if (command === 'plantillaenviar' && (args[0] || '').toLowerCase() === 'test') {
+            // ─── PLANTILLAS ───
+            if (command === 'plantillatest' || (command === 'plantillaenviar' && (args[0] || '').toLowerCase() === 'test')) {
                 const userId = arg || process.env.duenio_delbot;
                 const plantillaId = await crearPlantillaTest(client, userId, userId, userId);
-                console.log(`[Consola] OK: plantilla de prueba ${plantillaId} creada y enviada al canal de registro (usuario ${userId}).`);
+                console.log(`[Consola] OK: plantilla de prueba ${plantillaId} creada (usuario ${userId}).`);
             } else if (command === 'plantillas') {
                 const userId = arg || process.env.duenio_delbot;
                 const plantillas = getPlantillasByUser(userId);
@@ -76,7 +87,7 @@ function initConsole(client) {
             } else if (command === 'plantillaeliminar') {
                 const plantillaId = (args[0] || '').trim();
                 if (!plantillaId) {
-                    console.log('[Consola] Uso: plantillaeliminar <id_plantilla> (ej: 123456789012345678_1791495073810)');
+                    console.log('[Consola] Uso: plantillaeliminar <id_plantilla>');
                 } else {
                     const p = getPlantilla(plantillaId);
                     if (!p) {
@@ -84,40 +95,42 @@ function initConsole(client) {
                     } else {
                         deletePlantilla(plantillaId);
                         const teniaReclamacion = deleteReclamacion(plantillaId);
-                        console.log(`[Consola] OK: plantilla ${plantillaId} (usuario ${p.userId}, estado ${p.estado}) eliminada${teniaReclamacion ? ' y su reclamación borrada' : ''}.`);
+                        console.log(`[Consola] OK: plantilla ${plantillaId} eliminada${teniaReclamacion ? ' y su reclamación borrada' : ''}.`);
                     }
                 }
-            } else if (command === 'vetotest') {
-                const userId = arg || process.env.duenio_delbot;
-                const diasRaw = args.find(a => /^\d+$/.test(a) && a !== arg) || args.find((a, i) => i > 0 && /^\d+$/.test(a));
-                const dias = diasRaw ? parseInt(diasRaw, 10) : 1;
-                const vetoId = await crearVetoTest(client, userId, dias);
-                console.log(`[Consola] OK: veto de prueba ${vetoId} enviado al canal de vetos (usuario ${userId}, ${dias} día(s)). No añade rol ni envía DM.`);
+            } else if (command === 'recuperarplantillas') {
+                console.log('[Recuperar] Iniciando (puede tardar unos segundos)...');
+                const r = await recuperarPlantillas(client);
+                const estados = Object.entries(r.porEstado).map(([e, n]) => `${e}: ${n}`).join(' · ');
+                console.log(`[Recuperar] OK: ${r.total} plantilla(s) recuperadas (${r.antes} → ${r.despues}).`);
+                if (r.total) console.log(`[Recuperar]   ${estados}`);
+                else console.log('[Recuperar]   no había nada nuevo.');
+                if (r.respaldo) console.log(`[Recuperar]   respaldo: src/database/backups/${r.respaldo}`);
+
+            // ─── LIMPIEZA ───
             } else if (command === 'limpiartest') {
                 const res = await limpiarTest(client);
                 const partes = [];
-                if (res.plantillas) partes.push(`${res.plantillas} plantilla(s) de prueba (${res.plantillaIds.join(', ')})`);
-                if (res.vetos) partes.push(`${res.vetos} veto(s) de prueba (${res.vetoIds.join(', ')})`);
-                console.log(`[Consola] OK: ${res.mensajes} mensaje(s) de prueba borrados de Discord${partes.length ? ` y ${partes.join(' y ')} borrados` : ', y no había registros de prueba que borrar'}.`);
+                if (res.plantillas) partes.push(`${res.plantillas} plantilla(s)`);
+                if (res.vetos) partes.push(`${res.vetos} veto(s)`);
+                console.log(`[Consola] OK: ${res.mensajes} mensaje(s) borrados${partes.length ? ` y ${partes.join(' y ')} eliminados` : ''}.`);
             } else if (command === 'limpiarregistro') {
                 const userId = arg;
                 if (!/^\d{15,21}$/.test(userId)) {
-                    console.log('[Consola] Uso: limpiarregistro <id_usuario> (ej: 991791054535802880)');
+                    console.log('[Consola] Uso: limpiarregistro <id_usuario>');
                 } else {
                     const res = await limpiarRegistro(client, userId);
-                    console.log(`[Consola] OK: usuario ${userId} — ${res.plantillas} plantilla(s), ${res.vetos} veto(s) y ${res.mensajes} mensaje(s) de Discord borrados.`);
-                    if (res.pIds.length) console.log(`  plantillas: ${res.pIds.join(', ')}`);
-                    if (res.vIds.length) console.log(`  vetos: ${res.vIds.join(', ')}`);
-                    if (!res.plantillas && !res.vetos && !res.mensajes) console.log('  (no había nada registrado de ese usuario)');
+                    console.log(`[Consola] OK: ${userId} — ${res.plantillas} plantilla(s), ${res.vetos} veto(s), ${res.mensajes} mensaje(s).`);
+                    if (!res.plantillas && !res.vetos && !res.mensajes) console.log('  (no había nada)');
                 }
             } else if (command === 'limpiarmensajes') {
                 const canalId = arg;
                 const cantidad = Number(args[1]);
                 if (!/^\d{15,21}$/.test(canalId) || !Number.isInteger(cantidad) || cantidad < 1 || cantidad > 500) {
-                    console.log('[Consola] Uso: limpiarmensajes <id_canal> <cantidad> (cantidad entre 1 y 500)');
+                    console.log('[Consola] Uso: limpiarmensajes <id_canal> <cantidad (1-500)>');
                 } else {
                     const res = await limpiarMensajes(client, canalId, cantidad);
-                    console.log(`[Consola] OK: ${res.borrados}/${res.solicitados} mensaje(s) borrados del canal ${canalId}${res.fallidos ? ` (${res.fallidos} fallidos, posiblemente permisos o antigüedad)` : ''}.`);
+                    console.log(`[Consola] OK: ${res.borrados}/${res.solicitados} borrados${res.fallidos ? ` (${res.fallidos} fallidos)` : ''}.`);
                 }
             } else if (command === 'limpiarmensaje') {
                 if (!args.length) {
@@ -125,25 +138,19 @@ function initConsole(client) {
                 } else {
                     const res = await limpiarMensaje(client, args);
                     if (res.ok) {
-                        console.log(`[Consola] OK: mensaje ${res.messageId} borrado del canal ${res.channelId}${res.origen === 'buscado' ? ' (buscado en canales conocidos)' : ''}.`);
+                        console.log(`[Consola] OK: mensaje ${res.messageId} borrado del canal ${res.channelId}.`);
                     } else {
                         console.log(`[Consola] No se pudo borrar: ${res.error}`);
                     }
                 }
-            } else if (command === 'recuperarplantillas') {
-                console.log('[Recuperar] Iniciando (lectura de Discord, puede tardar unos segundos)...');
-                const r = await recuperarPlantillas(client);
-                const estados = Object.entries(r.porEstado).map(([e, n]) => `${e}: ${n}`).join(' · ');
-                console.log(`[Recuperar] OK: ${r.total} plantilla(s) recuperadas de ${r.antes} a ${r.despues} en total.`);
-                if (r.total) console.log(`[Recuperar]   nuevas por estado -> ${estados} (copias: ${r.copias}, fichas: ${r.fichas}, anuncios: ${r.anuncios})`);
-                else console.log('[Recuperar]   no había nada nuevo que recuperar.');
-                if (r.respaldo) console.log(`[Recuperar]   respaldo previo: src/database/backups/${r.respaldo}`);
+
+            // ─── OPOSICIONES ───
             } else if (command === 'crearoposicion') {
                 const codigo = (args[0] || '').toUpperCase().trim();
                 const fecha = (args[1] || '').trim();
                 const hora = (args[2] || '').trim();
                 if (!codigo || !fecha || !hora) {
-                    console.log('[Consola] Uso: crearoposicion <codigo> <fecha> <hora> (ej: crearoposicion OPS-1K8N 25/10/2026 18:00)');
+                    console.log('[Consola] Uso: crearoposicion <código> <fecha> <hora> (ej: crearoposicion OPS-1K8N 25/10/2026 18:00)');
                 } else {
                     const duenio = process.env.duenio_delbot;
                     const r = await publicarConvocatoria(client, {
@@ -156,7 +163,7 @@ function initConsole(client) {
                         aceptadoPorTag: `Consola (<@${duenio}>)`,
                     });
                     if (r.ok) {
-                        console.log(`[Consola] OK: convocatoria ${codigo} creada y publicada (${fecha} ${hora}). Cualquier instructor puede gestionarla.`);
+                        console.log(`[Consola] OK: convocatoria ${codigo} creada y publicada (${fecha} ${hora}).`);
                     } else {
                         console.log(`[Consola] Error: ${r.error}`);
                     }
@@ -166,7 +173,7 @@ function initConsole(client) {
                 const fecha = (args[1] || '').trim() || 'Por confirmar';
                 const hora = (args[2] || '').trim() || 'Por confirmar';
                 if (!codigo) {
-                    console.log('[Consola] Uso: crearoposicionquiet <codigo> [fecha] [hora] (ej: crearoposicionquiet OPS-1K8N 25/10/2026 18:00)');
+                    console.log('[Consola] Uso: crearoposicionquiet <código> [fecha] [hora]');
                 } else if (getOposicion(codigo)) {
                     console.log(`[Consola] Ya existe una oposición con el código ${codigo}.`);
                 } else {
@@ -180,12 +187,20 @@ function initConsole(client) {
                         aceptadoPor: `<@${duenio}>`,
                         aceptadoPorTag: `Consola (<@${duenio}>)`,
                     });
-                    console.log(`[Consola] OK: oposición ${codigo} creada en silencio (${fecha} ${hora}). No se ha publicado nada en Discord.`);
+                    console.log(`[Consola] OK: oposición ${codigo} creada en silencio (${fecha} ${hora}).`);
                 }
+
+            // ─── TEST ───
+            } else if (command === 'vetotest') {
+                const userId = arg || process.env.duenio_delbot;
+                const diasRaw = args.find(a => /^\d+$/.test(a) && a !== arg) || args.find((a, i) => i > 0 && /^\d+$/.test(a));
+                const dias = diasRaw ? parseInt(diasRaw, 10) : 1;
+                const vetoId = await crearVetoTest(client, userId, dias);
+                console.log(`[Consola] OK: veto de prueba ${vetoId} enviado (usuario ${userId}, ${días ?? dias} día(s)).`);
             } else if (command === 'testtramiteck') {
                 const id = arg;
                 if (!/^\d{15,21}$/.test(id)) {
-                    console.log('[Consola] Uso: testtramiteck <id_usuario> (ej: testtramiteck 991791054535802880)');
+                    console.log('[Consola] Uso: testtramiteck <id_usuario>');
                 } else {
                     try {
                         const guild = client.guilds.cache.first();
@@ -244,27 +259,38 @@ function initConsole(client) {
                             );
 
                         await canalCK.send({ components: [container], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.SuppressNotifications });
-                        console.log(`[Consola] Test CK realizado a ${member.user.tag} (${id}).`);
+                        console.log(`[Consola] OK: CK enviado al canal de registro para ${member.user.tag}.`);
                     } catch (e) {
                         console.log(`[Consola] Error: ${e.message}`);
                     }
                 }
+
+            // ─── AYUDA ───
             } else if (command === 'ayuda' || command === 'help' || command === 'comandos') {
-                console.log('[Consola] plantillaenviar test [id_usuario]');
-                console.log('[Consola] plantillas [id_usuario]');
-                console.log('[Consola] reclamaciones [id_usuario]');
-                console.log('[Consola] plantillaeliminar <id_plantilla>');
-                console.log('[Consola] limpiartest');
-                console.log('[Consola] limpiarregistro <id_usuario>');
-                console.log('[Consola] limpiarmensajes <id_canal> <cantidad>');
-                console.log('[Consola] limpiarmensaje <enlace | id_canal id_mensaje | id_mensaje>');
-                console.log('[Consola] vetotest [id_usuario] [dias]');
-                console.log('[Consola] recuperarplantillas');
-                console.log('[Consola] crearoposicion <codigo> <fecha> <hora>');
-                console.log('[Consola] crearoposicionquiet <codigo> [fecha] [hora]');
-                console.log('[Consola] testtramiteck <id_usuario>');
+                console.log('');
+                console.log('[Consola] ─── PLANTILLAS ─────────────────────────────────────');
+                console.log('[Consola]   plantillatest [id_usuario]');
+                console.log('[Consola]   plantillas [id_usuario]');
+                console.log('[Consola]   reclamaciones [id_usuario]');
+                console.log('[Consola]   plantillaeliminar <id_plantilla>');
+                console.log('[Consola]   recuperarplantillas');
+                console.log('');
+                console.log('[Consola] ─── LIMPIEZA ───────────────────────────────────────');
+                console.log('[Consola]   limpiartest');
+                console.log('[Consola]   limpiarregistro <id_usuario>');
+                console.log('[Consola]   limpiarmensajes <id_canal> <cantidad>');
+                console.log('[Consola]   limpiarmensaje <enlace | id_canal id_mensaje | id_mensaje>');
+                console.log('');
+                console.log('[Consola] ─── OPOSICIONES ────────────────────────────────────');
+                console.log('[Consola]   crearoposicion <código> <fecha> <hora>');
+                console.log('[Consola]   crearoposicionquiet <código> [fecha] [hora]');
+                console.log('');
+                console.log('[Consola] ─── TEST ──────────────────────────────────────────');
+                console.log('[Consola]   vetotest [id_usuario] [días]');
+                console.log('[Consola]   testtramiteck <id_usuario>');
+                console.log('');
             } else {
-                console.log(`[Consola] Comando desconocido: "${command}". Escribe "ayuda" para ver los comandos.`);
+                console.log(`[Consola] Comando desconocido: "${command}". Escribe "ayuda".`);
             }
         } catch (e) {
             console.error('[Consola] Error:', e.message);
