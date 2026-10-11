@@ -207,8 +207,8 @@ function initConsole(client) {
                     const imagePath = path.join(__dirname, '..', 'convocatoriasimagen.png');
                     const attachment = new AttachmentBuilder(imagePath, { name: 'logo.png' });
                     const embed = new EmbedBuilder()
-                        .setDescription(mensaje)
-                        .setImage('attachment://logo.png');
+                        .setAuthor({ name: 'COMUNICADO', iconURL: 'attachment://logo.png' })
+                        .setDescription(mensaje);
                     await user.send({ embeds: [embed], files: [attachment] });
                     console.log(`[Consola] OK: MD enviado a ${user.tag} (${id}).`);
                 }
