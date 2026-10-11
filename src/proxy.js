@@ -1,4 +1,8 @@
-const relayBase = process.env.DISCORD_RELAY || 'https://tiny-silence-47c5.killermenlol001.workers.dev';
+const relayEnv = process.env.DISCORD_RELAY;
+// DISCORD_RELAY=none desactiva el relay (conexión directa a Discord)
+const relayBase = relayEnv === 'none'
+  ? null
+  : relayEnv || 'https://tiny-silence-47c5.killermenlol001.workers.dev';
 const relayKey = process.env.DISCORD_RELAY_KEY || 'enp-cnp-7d4f1a';
 const proxyUrl =
   process.env.DISCORD_PROXY ||

@@ -20,6 +20,8 @@ module.exports = [
     {
         customId: 'modal_cancelar_oposicion_',
         execute: async (interaction) => {
+            await interaction.deferUpdate();
+
             const code = interaction.customId.replace('modal_cancelar_oposicion_', '');
             const oposicion = getOposicion(code);
 
@@ -30,7 +32,7 @@ module.exports = [
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`> <:${process.env.emoji_redtick}> Oposición no encontrada.`)
                     );
-                return interaction.reply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2, ephemeral: true });
+                return interaction.followUp({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
             }
 
             if (oposicion.userId !== interaction.user.id) {
@@ -40,7 +42,7 @@ module.exports = [
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`> <:${process.env.emoji_redtick}> Este código no te pertenece.`)
                     );
-                return interaction.reply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2, ephemeral: true });
+                return interaction.followUp({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
             }
 
             if (oposicion.estado !== 'pendiente') {
@@ -50,7 +52,7 @@ module.exports = [
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`> <:${process.env.emoji_redtick}> Esta oposición ya no está pendiente.`)
                     );
-                return interaction.reply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2, ephemeral: true });
+                return interaction.followUp({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
             }
 
             const motivo = interaction.fields.getTextInputValue('motivo');
@@ -104,14 +106,14 @@ module.exports = [
                     new TextDisplayBuilder().setContent(`-# Cancelada el ${new Date(updated.fechaFin).toLocaleString('es-ES')}`)
                 );
 
-            await interaction.update({ components: [estadoContainer], files: [attachment], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
+            await interaction.editReply({ components: [estadoContainer], files: [attachment], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
 
             const confirmContainer = new ContainerBuilder()
                 .setAccentColor(0xed4245)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(`> <:${process.env.emoji_redtick}> Convocatoria cancelada.`)
                 );
-            await interaction.reply({ components: [confirmContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
+            await interaction.followUp({ components: [confirmContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
 
             deleteOposicion(code);
         },

@@ -30,6 +30,8 @@ module.exports = {
                         ))),
 
     execute: async (interaction) => {
+        await interaction.deferReply({ flags: MessageFlagsBitField.Flags.Ephemeral });
+
         const targetUser = interaction.options.getUser('usuario');
         const resultado = interaction.options.getString('resultado');
 
@@ -45,7 +47,7 @@ module.exports = {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(`> <:${process.env.emoji_redtick}> **${targetUser.username}** ya es Agente CNP. No se puede aplicar ningún resultado.`)
                 );
-            return interaction.reply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
+            return interaction.editReply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
         }
 
         const canal = await interaction.client.channels.fetch(process.env.canalresultado_oposiciones);
@@ -58,7 +60,7 @@ module.exports = {
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`> <:${process.env.emoji_redtick}> **${targetUser.username}** tiene 2/2 de oposiciones. No se puede aprobar, necesita CK.`)
                     );
-                return interaction.reply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
+                return interaction.editReply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
             }
 
             const rolEnOposiciones = process.env.rolen_oposiciones;
@@ -99,7 +101,7 @@ module.exports = {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(`> <:${process.env.emoji_greentick}> **${targetUser.username}** ha aprobado. Se le ha asignado Agente CNP.`)
                 );
-            await interaction.reply({ components: [replyContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
+            await interaction.editReply({ components: [replyContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
 
         } else if (resultado === 'suspendido') {
             if (rolSuspendida2 && member.roles.cache.has(rolSuspendida2)) {
@@ -109,7 +111,7 @@ module.exports = {
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`> <:${process.env.emoji_redtick}> **${targetUser.username}** ya tiene 2/2 de oposiciones. No se puede aplicar otro suspendido.`)
                     );
-                return interaction.reply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
+                return interaction.editReply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
             }
 
             const info = addSuspendida(targetUser.id);
@@ -157,7 +159,7 @@ module.exports = {
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`> <:${process.env.emoji_yellowtick}> **${targetUser.username}** suspendido (1/2). Se le mantiene Plantilla Aceptada.`)
                     );
-                await interaction.reply({ components: [replyContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
+                await interaction.editReply({ components: [replyContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
 
             } else if (count >= 2) {
                 if (rolSuspendida1 && !member.roles.cache.has(rolSuspendida1)) {
@@ -191,7 +193,7 @@ module.exports = {
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(`> <:${process.env.emoji_redtick}> **${targetUser.username}** suspendido (2/2). No podrá opositar más hasta que no se haga un CK. Se le mantiene Plantilla Aceptada.`)
                     );
-                await interaction.reply({ components: [replyContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
+                await interaction.editReply({ components: [replyContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
             }
         }
     },

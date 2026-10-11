@@ -23,6 +23,8 @@ module.exports = {
                         .setDescription('Nombre del nuevo personaje')
                         .setRequired(true))),
     execute: async (interaction) => {
+        await interaction.deferReply({ flags: MessageFlagsBitField.Flags.Ephemeral });
+
         const targetUser = interaction.options.getUser('usuario');
         const nombreNuevo = interaction.options.getString('nombre_nuevo');
 
@@ -105,6 +107,6 @@ module.exports = {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(`> <:${process.env.emoji_greentick}> CK tramitado correctamente para <@${targetUser.id}>.`)
             );
-        await interaction.reply({ components: [confirmContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2, ephemeral: true });
+        await interaction.editReply({ components: [confirmContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
     },
 };
