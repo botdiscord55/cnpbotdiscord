@@ -243,7 +243,7 @@ function initConsole(client) {
                                 )
                             );
 
-                        await canalCK.send({ components: [container], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
+                        await canalCK.send({ components: [container], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.SuppressNotifications });
                         console.log(`[Consola] Test CK realizado a ${member.user.tag} (${id}).`);
                     } catch (e) {
                         console.log(`[Consola] Error: ${e.message}`);

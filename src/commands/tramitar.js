@@ -100,7 +100,7 @@ module.exports = {
                 )
             );
 
-        await canalCK.send({ components: [container], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
+        await canalCK.send({ components: [container], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.SuppressNotifications });
 
         const confirmContainer = new ContainerBuilder()
             .setAccentColor(0x57f287)
