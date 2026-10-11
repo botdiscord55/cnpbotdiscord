@@ -1,10 +1,13 @@
 const readline = require('readline');
+const path = require('path');
 const {
     ContainerBuilder,
     TextDisplayBuilder,
     SeparatorBuilder,
     SeparatorSpacingSize,
     MessageFlagsBitField,
+    EmbedBuilder,
+    AttachmentBuilder,
 } = require('discord.js');
 const { crearPlantillaTest } = require('./utils/testPlantilla');
 const { crearVetoTest } = require('./utils/testVeto');
@@ -201,7 +204,12 @@ function initConsole(client) {
                     console.log('[Consola] Uso: enviardm <id_usuario> <mensaje> (ej: enviardm 991791054535802880 Hola, bienvenido)');
                 } else {
                     const user = await client.users.fetch(id);
-                    await user.send(mensaje);
+                    const imagePath = path.join(__dirname, '..', 'convocatoriasimagen.png');
+                    const attachment = new AttachmentBuilder(imagePath, { name: 'logo.png' });
+                    const embed = new EmbedBuilder()
+                        .setDescription(mensaje)
+                        .setImage('attachment://logo.png');
+                    await user.send({ embeds: [embed], files: [attachment] });
                     console.log(`[Consola] OK: MD enviado a ${user.tag} (${id}).`);
                 }
 
