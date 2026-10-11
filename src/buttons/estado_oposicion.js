@@ -17,6 +17,7 @@ const {
 const path = require('path');
 const { getOposicion, updateOposicion, deleteOposicion } = require('../database/oposiciones');
 const { logAction } = require('../utils/actionLog');
+const { esInstructor } = require('../utils/plantillasCard');
 
 function buildEstadoContainer(code, oposicion) {
     const ESTADO_LABELS = {
@@ -136,7 +137,7 @@ module.exports = [
                 return interaction.followUp({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2, ephemeral: true });
             }
 
-            if (oposicion.userId !== interaction.user.id) {
+            if (oposicion.userId !== interaction.user.id && !(await esInstructor(interaction))) {
                 logAction(interaction, { tipo: 'accion', estado: 'warning', nombre: 'iniciar la convocatoria', motivo: 'este código no te pertenece' });
                 const errorContainer = new ContainerBuilder()
                     .setAccentColor(0xed4245)
@@ -275,7 +276,7 @@ module.exports = [
                 return interaction.reply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2, ephemeral: true });
             }
 
-            if (oposicion.userId !== interaction.user.id) {
+            if (oposicion.userId !== interaction.user.id && !(await esInstructor(interaction))) {
                 logAction(interaction, { tipo: 'accion', estado: 'warning', nombre: 'finalizar la convocatoria', motivo: 'este código no te pertenece' });
                 const errorContainer = new ContainerBuilder()
                     .setAccentColor(0xed4245)
@@ -347,7 +348,7 @@ module.exports = [
                 return interaction.reply({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2, ephemeral: true });
             }
 
-            if (oposicion.userId !== interaction.user.id) {
+            if (oposicion.userId !== interaction.user.id && !(await esInstructor(interaction))) {
                 logAction(interaction, { tipo: 'accion', estado: 'warning', nombre: 'cancelar la oposición', motivo: 'este código no te pertenece' });
                 const errorContainer = new ContainerBuilder()
                     .setAccentColor(0xed4245)
@@ -474,7 +475,7 @@ module.exports = [
                 return interaction.followUp({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2, ephemeral: true });
             }
 
-            if (oposicion.userId !== interaction.user.id) {
+            if (oposicion.userId !== interaction.user.id && !(await esInstructor(interaction))) {
                 logAction(interaction, { tipo: 'accion', estado: 'warning', nombre: 'desactivar las inscripciones', motivo: 'este código no te pertenece' });
                 const errorContainer = new ContainerBuilder()
                     .setAccentColor(0xed4245)
@@ -511,7 +512,7 @@ module.exports = [
                 return interaction.followUp({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2, ephemeral: true });
             }
 
-            if (oposicion.userId !== interaction.user.id) {
+            if (oposicion.userId !== interaction.user.id && !(await esInstructor(interaction))) {
                 logAction(interaction, { tipo: 'accion', estado: 'warning', nombre: 'reactivar las inscripciones', motivo: 'este código no te pertenece' });
                 const errorContainer = new ContainerBuilder()
                     .setAccentColor(0xed4245)

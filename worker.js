@@ -24,11 +24,11 @@ export default {
       if (!upstream) {
         return new Response('upstream did not accept websocket (status ' + upstreamResp.status + ')', { status: 502 });
       }
-      upstream.accept({ allowHalfOpen: true });
+      upstream.accept();
 
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
-      server.accept({ allowHalfOpen: true });
+      server.accept();
 
       upstream.addEventListener('message', (event) => server.send(event.data));
       server.addEventListener('message', (event) => upstream.send(event.data));

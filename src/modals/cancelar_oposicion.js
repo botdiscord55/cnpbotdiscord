@@ -15,6 +15,7 @@ const {
 const path = require('path');
 const { getOposicion, updateOposicion, deleteOposicion } = require('../database/oposiciones');
 const { logAction } = require('../utils/actionLog');
+const { esInstructor } = require('../utils/plantillasCard');
 
 module.exports = [
     {
@@ -35,8 +36,8 @@ module.exports = [
                 return interaction.followUp({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 | MessageFlagsBitField.Flags.Ephemeral });
             }
 
-            if (oposicion.userId !== interaction.user.id) {
-                logAction(interaction, { tipo: 'accion', estado: 'warning', nombre: 'cancelar la oposición', motivo: 'este código no te pertenece' });
+            if (oposicion.userId !== interaction.user.id && !(await esInstructor(interaction))) {
+                logAction(interaction, { tipo: 'accion', estado: 'warning', nombre: 'cancelar la oposición', motivo: 'este código no te pertenece y no eres instructor' });
                 const errorContainer = new ContainerBuilder()
                     .setAccentColor(0xed4245)
                     .addTextDisplayComponents(
