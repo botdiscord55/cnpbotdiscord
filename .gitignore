@@ -1,0 +1,15 @@
+node_modules/
+.npm/
+.env
+
+# Datos locales del bot (viven en el servidor de hosting, no en el repo)
+src/database/*.json
+src/database/backups/
+*.log
+
+# Pruebas locales (no subir)
+testnet.js
+local-relay.js
+mini-proxy.js
+Iniciar Proxy.bat
+
