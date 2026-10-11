@@ -5,6 +5,7 @@ const { limpiarTest } = require('./utils/limpiarTest');
 const { limpiarRegistro } = require('./utils/limpiarRegistro');
 const { limpiarMensajes, limpiarMensaje } = require('./utils/limpiarMensajes');
 const { recuperarPlantillas } = require('./utils/recuperarPlantillas');
+const { publicarConvocatoria } = require('./utils/crearOposicion');
 const { getPlantilla, getPlantillasByUser, deletePlantilla } = require('./database/plantillas');
 const { getReclamacionesByInstructor, deleteReclamacion } = require('./database/reclamaciones');
 
@@ -20,8 +21,9 @@ function initConsole(client) {
     console.log('[Consola]   limpiarregistro <id_usuario>        -> borra todos los registros y mensajes de Discord de ese usuario (plantillas, reclamaciones y vetos)');
     console.log('[Consola]   limpiarmensajes <id_canal> <n>     -> borra los n últimos mensajes de un canal (1-500)');
     console.log('[Consola]   limpiarmensaje <enlace|id>         -> borra un mensaje por su enlace, o <id_canal> <id_mensaje>, o solo su id');
-    console.log('[Consola]   vetotest [id_usuario] [dias]        -> crea un veto de prueba en el canal de vetos (sin efecto real)');
-    console.log('[Consola]   recuperarplantillas                 -> recupera plantillas antiguas (copias locales + historial de Discord) sin duplicar');
+            console.log('[Consola]   vetotest [id_usuario] [dias]        -> crea un veto de prueba en el canal de vetos (sin efecto real)');
+            console.log('[Consola]   recuperarplantillas                 -> recupera plantillas antiguas (copias locales + historial de Discord) sin duplicar');
+            console.log('[Consola]   crearoposicion <codigo> <fecha> <hora> -> crea y publica una convocatoria con código propio (ej: crearoposicion OPS-1K8N 25/10/2026 18:00)');
 
     rl.on('line', async (line) => {
         const parts = line.trim().split(/ +/).filter(Boolean);
@@ -126,6 +128,29 @@ function initConsole(client) {
                 if (r.total) console.log(`[Recuperar]   nuevas por estado -> ${estados} (copias: ${r.copias}, fichas: ${r.fichas}, anuncios: ${r.anuncios})`);
                 else console.log('[Recuperar]   no había nada nuevo que recuperar.');
                 if (r.respaldo) console.log(`[Recuperar]   respaldo previo: src/database/backups/${r.respaldo}`);
+            } else if (command === 'crearoposicion') {
+                const codigo = (args[0] || '').toUpperCase().trim();
+                const fecha = (args[1] || '').trim();
+                const hora = (args[2] || '').trim();
+                if (!codigo || !fecha || !hora) {
+                    console.log('[Consola] Uso: crearoposicion <codigo> <fecha> <hora> (ej: crearoposicion OPS-1K8N 25/10/2026 18:00)');
+                } else {
+                    const duenio = process.env.duenio_delbot;
+                    const r = await publicarConvocatoria(client, {
+                        code: codigo,
+                        userId: duenio,
+                        userTag: `<@${duenio}>`,
+                        fecha,
+                        hora,
+                        aceptadoPor: `<@${duenio}>`,
+                        aceptadoPorTag: `Consola (<@${duenio}>)`,
+                    });
+                    if (r.ok) {
+                        console.log(`[Consola] OK: convocatoria ${codigo} creada y publicada (${fecha} ${hora}). Cualquier instructor puede gestionarla.`);
+                    } else {
+                        console.log(`[Consola] Error: ${r.error}`);
+                    }
+                }
             } else if (command === 'ayuda' || command === 'help' || command === 'comandos') {
                 console.log('[Consola] plantillaenviar test [id_usuario]');
                 console.log('[Consola] plantillas [id_usuario]');
@@ -137,6 +162,7 @@ function initConsole(client) {
                 console.log('[Consola] limpiarmensaje <enlace | id_canal id_mensaje | id_mensaje>');
                 console.log('[Consola] vetotest [id_usuario] [dias]');
                 console.log('[Consola] recuperarplantillas');
+                console.log('[Consola] crearoposicion <codigo> <fecha> <hora>');
             } else {
                 console.log(`[Consola] Comando desconocido: "${command}". Escribe "ayuda" para ver los comandos.`);
             }

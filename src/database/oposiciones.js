@@ -27,7 +27,8 @@ function generateCode() {
 
 function createOposicion(data) {
     const db = loadDB();
-    const code = generateCode();
+    const code = data.code || generateCode();
+    if (db[code]) return null;
     db[code] = {
         code,
         userId: data.userId,
