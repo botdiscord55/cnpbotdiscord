@@ -208,9 +208,9 @@ function initConsole(client) {
                         const canalCK = await client.channels.fetch(process.env.canalregistro_ck);
 
                         const container = new ContainerBuilder()
-                            .setAccentColor(0xfee75c)
+                            .setAccentColor(0x2b2d31)
                             .addTextDisplayComponents(
-                                new TextDisplayBuilder().setContent('### 🧪 TEST TRAMITACIÓN DE CHARACTER KILL')
+                                new TextDisplayBuilder().setContent('### TRAMITACIÓN DE CHARACTER KILL')
                             )
                             .addSeparatorComponents(
                                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Large)
@@ -219,7 +219,7 @@ function initConsole(client) {
                                 new TextDisplayBuilder().setContent(
                                     `**Usuario:** <@${id}> (\`${id}\`)\n` +
                                     `**Nombre anterior:** ${nombreAnterior}\n` +
-                                    `**Nombre nuevo:** <nombre_nuevo>\n` +
+                                    `**Nombre nuevo:** Nuevo Nombre\n` +
                                     `**Tramitado por:** Consola`
                                 )
                             )
@@ -228,9 +228,9 @@ function initConsole(client) {
                             )
                             .addTextDisplayComponents(
                                 new TextDisplayBuilder().setContent(
-                                    `> **Roles que se quitarían**\n` +
+                                    `> **Roles revocados**\n` +
                                     (rolesQuitados.length > 0
-                                        ? rolesQuitados.map(r => `<:${process.env.emoji_greytick}> ${r}`).join('\n')
+                                        ? rolesQuitados.map(r => `<:${process.env.emoji_redtick}> ${r}`).join('\n')
                                         : `<:${process.env.emoji_greytick}> Ninguno`)
                                 )
                             )
@@ -239,7 +239,7 @@ function initConsole(client) {
                             )
                             .addTextDisplayComponents(
                                 new TextDisplayBuilder().setContent(
-                                    `-# ${date} a las ${time} · **TEST — no se ha modificado nada**`
+                                    `-# ${date} a las ${time}`
                                 )
                             );
 
