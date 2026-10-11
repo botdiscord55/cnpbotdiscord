@@ -487,6 +487,27 @@ module.exports = [
 
             updateOposicion(code, { unirseDesactivado: true });
 
+            if (oposicion.msgUnirseId) {
+                try {
+                    const canal = await interaction.client.channels.fetch(process.env.canaloposicion_pendiente);
+                    const msg = await canal.messages.fetch(oposicion.msgUnirseId);
+                    const cerradoContainer = new ContainerBuilder()
+                        .setAccentColor(0xed4245)
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(`### ${process.env.emoji_oposiciones} CONVOCATORIA INICIADA`)
+                        )
+                        .addSeparatorComponents(
+                            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+                        )
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(
+                                'A partir de ahora nadie se podrá unir a las convocatorias bajo ningún concepto.'
+                            )
+                        );
+                    await msg.edit({ components: [cerradoContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
+                } catch {}
+            }
+
             const confirmContainer = new ContainerBuilder()
                 .setAccentColor(0xed4245)
                 .addTextDisplayComponents(
