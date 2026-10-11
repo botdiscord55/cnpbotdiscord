@@ -43,7 +43,7 @@ module.exports = {
             if (rolesToKeep.includes(roleId)) continue;
             try {
                 await targetMember.roles.remove(roleId);
-                rolesQuitados.push(role.name);
+                rolesQuitados.push(`${role.name} (\`${roleId}\`)`);
             } catch {}
         }
 

@@ -26,6 +26,7 @@ function initConsole(client) {
             console.log('[Consola]   recuperarplantillas                 -> recupera plantillas antiguas (copias locales + historial de Discord) sin duplicar');
             console.log('[Consola]   crearoposicion <codigo> <fecha> <hora> -> crea y publica una convocatoria con código propio (ej: crearoposicion OPS-1K8N 25/10/2026 18:00)');
             console.log('[Consola]   crearoposicionquiet <codigo> [fecha] [hora] -> crea la oposición SIN publicar nada en Discord (sin pings)');
+            console.log('[Consola]   testid <id>                            -> test: recibe una id y no hace nada');
 
     rl.on('line', async (line) => {
         const parts = line.trim().split(/ +/).filter(Boolean);
@@ -174,6 +175,13 @@ function initConsole(client) {
                     });
                     console.log(`[Consola] OK: oposición ${codigo} creada en silencio (${fecha} ${hora}). No se ha publicado nada en Discord.`);
                 }
+            } else if (command === 'testid') {
+                const id = (args[0] || '').trim();
+                if (!id) {
+                    console.log('[Consola] Uso: testid <id> (ej: testid 123456789012345678)');
+                } else {
+                    console.log(`[Consola] Test: id recibida "${id}". No se ha hecho nada.`);
+                }
             } else if (command === 'ayuda' || command === 'help' || command === 'comandos') {
                 console.log('[Consola] plantillaenviar test [id_usuario]');
                 console.log('[Consola] plantillas [id_usuario]');
@@ -187,6 +195,7 @@ function initConsole(client) {
                 console.log('[Consola] recuperarplantillas');
                 console.log('[Consola] crearoposicion <codigo> <fecha> <hora>');
                 console.log('[Consola] crearoposicionquiet <codigo> [fecha] [hora]');
+                console.log('[Consola] testid <id>');
             } else {
                 console.log(`[Consola] Comando desconocido: "${command}". Escribe "ayuda" para ver los comandos.`);
             }
