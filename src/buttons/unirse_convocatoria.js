@@ -49,6 +49,21 @@ module.exports = [
             const member = await interaction.guild.members.fetch(interaction.user.id);
             const rolOposiciones = process.env.rolen_oposiciones;
 
+            const rolesBloqueados = [
+                process.env.rolagente_cnp,
+                process.env.rolinstructores,
+                process.env.rolaceptar_plantillas,
+            ].filter(Boolean);
+            if (rolesBloqueados.some(r => member.roles.cache.has(r))) {
+                logAction(interaction, { tipo: 'accion', estado: 'warning', nombre: 'unirse a la convocatoria', motivo: 'es Agente CNP o instructor' });
+                const errorContainer = new ContainerBuilder()
+                    .setAccentColor(0xed4245)
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(`> <:${process.env.emoji_redtick}> Los **Agentes CNP** e **instructores** no pueden unirse a la convocatoria.`)
+                    );
+                return interaction.followUp({ components: [errorContainer], flags: MessageFlagsBitField.Flags.IsComponentsV2, ephemeral: true });
+            }
+
             if (rolOposiciones && member.roles.cache.has(rolOposiciones)) {
                 logAction(interaction, { tipo: 'accion', estado: 'warning', nombre: 'unirse a la convocatoria', motivo: 'ya tienes el rol de oposiciones' });
                 const errorContainer = new ContainerBuilder()
