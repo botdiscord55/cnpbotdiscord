@@ -1,20 +1,18 @@
 const { Events, EmbedBuilder, MessageFlagsBitField } = require('discord.js');
 const { logAction } = require('../utils/actionLog');
-const { buildPlantillasCard, buildVertotalCard, esAgenteCnp, esInstructor } = require('../utils/plantillasCard');
+const { buildPlantillasCard, buildVertotalCard, esInstructor } = require('../utils/plantillasCard');
 const { track } = require('../utils/plantillasLive');
 const { programarBorrado } = require('../utils/tempMsg');
 
 async function handlePlantillas(message, args) {
     try { await message.delete(); } catch {}
 
+    if (!(await esInstructor(message))) return;
+
     const sub = (args[0] || '').toLowerCase();
-    const usage = '**Uso:** `!plantillas ver [@usuario]` · `!plantillas vertotal` (solo instructores) — vertotal muestra las estadísticas globales.';
+    const usage = '**Uso:** `!plantillas ver [@usuario]` · `!plantillas vertotal` — vertotal muestra las estadísticas globales.';
 
     if (sub === 'vertotal') {
-        if (!(await esInstructor(message))) {
-            logAction(message, { tipo: 'comando', estado: 'warning', nombre: '!plantillas vertotal', motivo: 'no tiene permiso de instructor' });
-            return message.channel.send(`<:${process.env.emoji_redtick}> Solo los **instructores** pueden ver las estadísticas totales.`);
-        }
         const { container, stats } = buildVertotalCard();
         const sent = await message.channel.send({ components: [container], flags: MessageFlagsBitField.Flags.IsComponentsV2 });
         programarBorrado(sent);
@@ -25,11 +23,6 @@ async function handlePlantillas(message, args) {
             extra: `total: ${stats.total} · aceptadas: ${stats.counts.aceptada} · denegadas: ${stats.counts.denegada} · pendientes: ${stats.counts.pendiente}`,
         });
         return;
-    }
-
-    if (!(await esAgenteCnp(message))) {
-        logAction(message, { tipo: 'comando', estado: 'warning', nombre: '!plantillas', motivo: 'no tiene el rol de Agente CNP' });
-        return message.channel.send(`<:${process.env.emoji_redtick}> Solo los **Agentes de la CNP** pueden usar este comando.`);
     }
 
     if (sub !== 'ver') {

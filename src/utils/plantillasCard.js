@@ -158,9 +158,6 @@ function buildPlantillasCard(targetUserId, opts = {}) {
                 `-# Total de plantillas aceptadas: **${counts.aceptada || 0}**`
             )
         )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`-# 🔒 Vista de instructores — esto no es para civiles`)
-        )
         .addSeparatorComponents(
             new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
         )
