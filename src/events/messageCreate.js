@@ -10,7 +10,7 @@ async function handlePlantillas(message, args) {
     if (!(await esInstructor(message))) return;
 
     const sub = (args[0] || '').toLowerCase();
-    const usage = '**Uso:** `!plantillas ver [@usuario]` · `!plantillas vertotal` — vertotal muestra las estadísticas globales.';
+    const usage = '**Uso:** `!plantillas ver` (tu actividad como instructor) · `!plantillas ver @usuario` · `!plantillas vertotal` — vertotal muestra las estadísticas globales.';
 
     if (sub === 'vertotal') {
         const { container, stats } = buildVertotalCard();
@@ -31,14 +31,18 @@ async function handlePlantillas(message, args) {
     }
 
     const mention = message.mentions.users.first();
-    const rawId = args[1] || '';
-    const target = mention || (/^\d{15,21}$/.test(rawId) ? { id: rawId } : null) || { id: message.author.id };
+    const rawId = (args[1] || '').trim();
+    if (!mention && rawId && !/^\d{15,21}$/.test(rawId)) {
+        logAction(message, { tipo: 'comando', estado: 'warning', nombre: '!plantillas ver', motivo: `no se pudo reconocer al usuario "${rawId}"` });
+        return message.channel.send(`No pude reconocer a **${rawId}**. Mencionalo con \`@usuario\` o usa su ID de Discord.\n${usage}`);
+    }
+    const target = mention || (rawId ? { id: rawId } : { id: message.author.id });
 
     const esPropio = target.id === message.author.id;
-    const { container, plantillas, counts } = buildPlantillasCard(target.id, { instructor: esPropio });
+    const { container, plantillas, counts, actividad } = buildPlantillasCard(target.id, { instructor: esPropio });
 
-    if (!plantillas.length) {
-        logAction(message, { tipo: 'comando', estado: 'warning', nombre: '!plantillas ver', motivo: 'el usuario no tiene plantillas registradas' });
+    if (!plantillas.length && !actividad) {
+        logAction(message, { tipo: 'comando', estado: 'warning', nombre: '!plantillas ver', motivo: `el usuario ${target.id} no tiene plantillas registradas` });
     }
 
     await message.channel.send({ components: [container], flags: MessageFlagsBitField.Flags.IsComponentsV2 })
@@ -47,12 +51,15 @@ async function handlePlantillas(message, args) {
             programarBorrado(sent);
         });
 
-    if (plantillas.length) {
+    if (plantillas.length || actividad) {
+        const partes = [];
+        if (plantillas.length && counts) partes.push(`aceptadas: ${counts.aceptada}, denegadas: ${counts.denegada}, pendientes: ${counts.pendiente}`);
+        if (actividad) partes.push(`gestionadas como instructor: ${actividad}`);
         logAction(message, {
             tipo: 'comando',
             estado: 'ok',
             nombre: '!plantillas ver',
-            extra: `sobre <@${target.id}> — aceptadas: ${counts.aceptada}, denegadas: ${counts.denegada}, pendientes: ${counts.pendiente}`,
+            extra: `sobre <@${target.id}> — ${partes.join(' · ')}`,
         });
     }
 }
@@ -213,7 +220,7 @@ module.exports = {
                     { name: '!quitarplantillaaceptada @user/id,id,id', value: 'Retira plantilla aceptada y asigna sin plantilla.', inline: false },
                     { name: '!quitarplantilladenegada1 @user/id,id,id', value: 'Retira el rol de plantilla denegada (1/2).', inline: false },
                     { name: '!quitarplantilladenegada2 @user/id,id,id', value: 'Retira el rol de plantilla denegada (2/2).', inline: false },
-                    { name: '!plantillas ver [@user/id]', value: 'Historial de plantillas. Sin usuario: el tuyo. Con usuario: el suyo.', inline: false },
+                    { name: '!plantillas ver [@user/id]', value: 'Historial de plantillas. Sin usuario: lo que tú has gestionado como instructor (reclamadas/aceptadas/denegadas). Con usuario: el suyo.', inline: false },
                     { name: '!plantillas vertotal', value: 'Estadísticas globales — solo instructores (no muestra quién envió plantillas; con botones CSV/JSON).', inline: false },
                     { name: '!comandos', value: 'Muestra esta lista de comandos.', inline: false }
                 );
@@ -232,7 +239,7 @@ module.exports = {
                 .setDescription('Se escriben en la ventana **Bot CNP - Consola**, no en Discord:')
                 .addFields(
                     { name: 'plantillaenviar test [id_usuario]', value: 'Crea una plantilla de prueba (se puede reclamar para probar; sin efectos reales).', inline: false },
-                    { name: 'plantillas [id_usuario]', value: 'Muestra el resumen de plantillas de un usuario.', inline: false },
+                    { name: 'plantillas [id_usuario]', value: 'Muestra el resumen de plantillas de un usuario y su actividad como instructor.', inline: false },
                     { name: 'reclamaciones [id_usuario]', value: 'Muestra las reclamaciones de un instructor.', inline: false },
                     { name: 'plantillaeliminar <id_plantilla>', value: 'Borra una plantilla por su ID (la ID sale en la tarjeta).', inline: false },
                     { name: 'limpiartest', value: 'Borra los mensajes de prueba de Discord y todos sus registros.', inline: false },

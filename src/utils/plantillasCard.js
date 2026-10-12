@@ -8,7 +8,7 @@ const {
     ButtonStyle,
     StringSelectMenuBuilder,
 } = require('discord.js');
-const { getPlantillasByUser, getAllPlantillas } = require('../database/plantillas');
+const { getPlantillasByUser, getPlantillasProcesadasPor, getAllPlantillas } = require('../database/plantillas');
 const { getAllReclamaciones } = require('../database/reclamaciones');
 
 const POR_PAGINA = 5;
@@ -89,6 +89,70 @@ function actorId(ctx) {
     return user ? user.id : null;
 }
 
+function contarActividad(proc) {
+    const counts = { aceptada: 0, denegada: 0, reclamada: 0, retirada: 0 };
+    for (const p of proc) {
+        if (counts[p.estado] === undefined) counts[p.estado] = 0;
+        counts[p.estado]++;
+    }
+    return counts;
+}
+
+function resumenActividad(counts) {
+    const G = `<:${process.env.emoji_greentick}>`;
+    const R = `<:${process.env.emoji_redtick}>`;
+    const Y = `<:${process.env.emoji_yellowtick}>`;
+    const GY = `<:${process.env.emoji_greytick}>`;
+    const partes = [`${G} Aceptadas **${counts.aceptada || 0}**`];
+    if (counts.denegada) partes.push(`${R} Denegadas **${counts.denegada}**`);
+    if (counts.reclamada) partes.push(`${Y} En tus manos **${counts.reclamada}**`);
+    if (counts.retirada) partes.push(`${GY} Retiradas **${counts.retirada}**`);
+    return partes.join(' — ');
+}
+
+function lineasActividad(proc, max) {
+    return proc.slice(0, max).map((p, i) => {
+        const meta = ESTADO_META[p.estado] || { plural: p.estado, emoji: () => process.env.emoji_greytick };
+        const test = p.test === true ? ' · 🧪' : '';
+        return `${i + 1}. <:${meta.emoji()}> **${meta.plural}** — ${formatFecha(fechaDe(p))} · solicitante <@${p.userId}>${test}`;
+    });
+}
+
+function buildActividadCard(targetUserId, proc) {
+    const counts = contarActividad(proc);
+    const color = counts.denegada > counts.aceptada ? 0xed4245 : counts.aceptada > 0 ? 0x57f287 : 0xfee75c;
+
+    const container = new ContainerBuilder()
+        .setAccentColor(color)
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`### ${process.env.emoji_oposiciones} ACTIVIDAD DE <@${targetUserId}> COMO INSTRUCTOR`)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# Plantillas gestionadas por <@${targetUserId}> (reclamadas, aceptadas o denegadas)`)
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**Resumen:** ${resumenActividad(counts)}\n-# Total gestionadas: **${proc.length}**`
+            )
+        )
+        .addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**REGISTRO**\n-# Las ${Math.min(5, proc.length)} gestiones más recientes${proc.length > 5 ? ` de ${proc.length} en total` : ''}:\n${lineasActividad(proc, 5).join('\n')}`
+            )
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(NOTA_BORRADO)
+        );
+
+    return { container, actividad: proc.length };
+}
+
 async function esAgenteCnp(ctx) {
     const id = actorId(ctx);
     if (!id) return false;
@@ -135,8 +199,18 @@ function resumenCounts(counts) {
 
 function buildPlantillasCard(targetUserId, opts = {}) {
     const plantillas = getPlantillasByUser(targetUserId);
+    const proc = opts.instructor ? getPlantillasProcesadasPor(targetUserId) : [];
 
     if (!plantillas.length) {
+        if (proc.length) {
+            const act = buildActividadCard(targetUserId, proc);
+            return { container: act.container, plantillas, counts: null, actividad: act.actividad };
+        }
+
+        const hint = opts.instructor
+            ? '-# Cuando reclames, aceptes o deniegues una plantilla, aparecerá aquí tu registro de actividad.'
+            : '-# Si querías ver a otro usuario: `!plantillas ver @usuario` (o su ID de Discord).';
+
         const container = new ContainerBuilder()
             .setAccentColor(0xfee75c)
             .addTextDisplayComponents(
@@ -146,12 +220,15 @@ function buildPlantillasCard(targetUserId, opts = {}) {
                 new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
             )
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`> <:${process.env.emoji_yellowtick}> <@${targetUserId}> no tiene ninguna plantilla registrada.`)
+                new TextDisplayBuilder().setContent(`> <:${process.env.emoji_yellowtick}> <@${targetUserId}> (\`${targetUserId}\`) no tiene ninguna plantilla registrada.`)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(hint)
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(NOTA_BORRADO)
             );
-        return { container, plantillas, counts: null };
+        return { container, plantillas, counts: null, actividad: 0 };
     }
 
     const counts = { aceptada: 0, denegada: 0, pendiente: 0, reclamada: 0, retirada: 0 };
@@ -192,7 +269,20 @@ function buildPlantillasCard(targetUserId, opts = {}) {
                 `-# Los ${ultimos.length} registros más recientes${plantillas.length > ultimos.length ? ` de ${plantillas.length} en total` : ''}:\n` +
                 registroLines.join('\n')
             )
-        )
+        );
+
+    if (proc.length) {
+        container.addSeparatorComponents(
+            new SeparatorBuilder().setSpacing(SeparatorSpacingSize.Small)
+        );
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**ACTIVIDAD COMO INSTRUCTOR**\n> ${resumenActividad(contarActividad(proc))} — Total **${proc.length}**\n${lineasActividad(proc, 3).join('\n')}\n-# Usá \`!plantillas vertotal\` para las estadísticas globales.`
+            )
+        );
+    }
+
+    container
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(NOTA_BORRADO)
         )
@@ -205,7 +295,7 @@ function buildPlantillasCard(targetUserId, opts = {}) {
             )
         );
 
-    return { container, plantillas, counts };
+    return { container, plantillas, counts, actividad: proc.length };
 }
 
 function agruparPorEstado(plantillas) {

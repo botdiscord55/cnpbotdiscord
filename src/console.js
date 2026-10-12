@@ -16,7 +16,7 @@ const { recuperarPlantillas } = require('./utils/recuperarPlantillas');
 const { publicarConvocatoria } = require('./utils/crearOposicion');
 const { hacerRespaldo, restaurarRespaldo } = require('./utils/respaldoGitHub');
 const { createOposicion, getOposicion } = require('./database/oposiciones');
-const { getPlantilla, getPlantillasByUser, deletePlantilla } = require('./database/plantillas');
+const { getPlantilla, getPlantillasByUser, getPlantillasProcesadasPor, deletePlantilla } = require('./database/plantillas');
 const { getReclamacionesByInstructor, deleteReclamacion } = require('./database/reclamaciones');
 
 function initConsole(client) {
@@ -25,7 +25,7 @@ function initConsole(client) {
     console.log('');
     console.log('[Consola] ─── PLANTILLAS ─────────────────────────────────────');
     console.log('[Consola]   plantillatest [id_usuario]          -> crea una plantilla de prueba en el canal de registro');
-    console.log('[Consola]   plantillas [id_usuario]             -> resumen de plantillas de un usuario');
+    console.log('[Consola]   plantillas [id_usuario]             -> resumen de plantillas de un usuario (+ su actividad como instructor)');
     console.log('[Consola]   reclamaciones [id_usuario]           -> reclamaciones de un instructor');
     console.log('[Consola]   plantillaeliminar <id_plantilla>    -> borra una plantilla por su ID');
     console.log('[Consola]   recuperarplantillas                  -> recupera plantillas antiguas sin duplicar');
@@ -74,12 +74,21 @@ function initConsole(client) {
             } else if (command === 'plantillas') {
                 const userId = arg || process.env.duenio_delbot;
                 const plantillas = getPlantillasByUser(userId);
-                if (!plantillas.length) {
-                    console.log(`[Consola] El usuario ${userId} no tiene plantillas registradas.`);
+                const gestionadas = getPlantillasProcesadasPor(userId);
+                if (!plantillas.length && !gestionadas.length) {
+                    console.log(`[Consola] El usuario ${userId} no tiene plantillas registradas ni actividad como instructor.`);
                 } else {
                     console.log(`[Consola] Plantillas de ${userId}: ${plantillas.length} total.`);
                     for (const p of plantillas.slice(0, 10)) {
                         console.log(`  - ${p.id} | estado: ${p.estado} | creada: ${p.fechaCreacion}${p.test ? ' | TEST' : ''}`);
+                    }
+                    if (gestionadas.length) {
+                        const porEstado = {};
+                        for (const g of gestionadas) porEstado[g.estado] = (porEstado[g.estado] || 0) + 1;
+                        const detalle = Object.entries(porEstado).map(([e, n]) => `${e}: ${n}`).join(' · ');
+                        console.log(`[Consola] Actividad como instructor: ${gestionadas.length} gestionadas (${detalle}).`);
+                    } else {
+                        console.log(`[Consola] Actividad como instructor: ninguna.`);
                     }
                 }
             } else if (command === 'reclamaciones') {

@@ -67,6 +67,25 @@ function getPlantillasByUser(userId) {
         .sort((a, b) => new Date(b.fechaCreacion || 0) - new Date(a.fechaCreacion || 0));
 }
 
+function fechaResolucion(p) {
+    return p.fechaAceptacion || p.fechaDenegacion || p.fechaRetirada || p.fechaReclamacion || p.fechaCreacion;
+}
+
+function getPlantillasProcesadasPor(userId) {
+    const db = loadDB();
+    const id = String(userId);
+    const coincide = (v) => v != null && String(v) === id;
+    return Object.entries(db)
+        .filter(([_, p]) => (
+            (p.estado === 'aceptada' && coincide(p.aceptadaPor)) ||
+            (p.estado === 'denegada' && coincide(p.denegadaPor)) ||
+            (p.estado === 'retirada' && coincide(p.retiradaPor)) ||
+            (p.estado === 'reclamada' && coincide(p.reclamadaPor))
+        ))
+        .map(([pid, p]) => ({ id: pid, ...p }))
+        .sort((a, b) => new Date(fechaResolucion(b) || 0) - new Date(fechaResolucion(a) || 0));
+}
+
 function getAllPlantillas() {
     const db = loadDB();
     return Object.entries(db)
@@ -82,5 +101,6 @@ module.exports = {
     getPlantillasPendientes,
     hasPlantillaPendiente,
     getPlantillasByUser,
+    getPlantillasProcesadasPor,
     getAllPlantillas,
 };
