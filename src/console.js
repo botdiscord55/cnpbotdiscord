@@ -27,7 +27,7 @@ function initConsole(client) {
     console.log('');
     console.log('[Consola] ─── PLANTILLAS ─────────────────────────────────────');
     console.log('[Consola]   plantillatest [id_usuario]          -> crea una plantilla de prueba en el canal de registro');
-    console.log('[Consola]   plantillas [id_usuario]             -> resumen de plantillas de un usuario (+ su actividad como instructor)');
+    console.log('[Consola]   plantillas [id_usuario]             -> resumen de plantillas de un usuario (+ su registro de gestiones)');
     console.log('[Consola]   reclamaciones [id_usuario]           -> reclamaciones de un instructor');
     console.log('[Consola]   plantillaeliminar <id_plantilla>    -> borra una plantilla por su ID');
     console.log('[Consola]   recuperarplantillas                  -> recupera plantillas antiguas sin duplicar');
@@ -81,7 +81,7 @@ function initConsole(client) {
                 const plantillas = getPlantillasByUser(userId);
                 const gestionadas = getPlantillasProcesadasPor(userId);
                 if (!plantillas.length && !gestionadas.length) {
-                    console.log(`[Consola] El usuario ${userId} no tiene plantillas registradas ni actividad como instructor.`);
+                    console.log(`[Consola] El usuario ${userId} no tiene plantillas registradas ni gestiones.`);
                 } else {
                     console.log(`[Consola] Plantillas de ${userId}: ${plantillas.length} total.`);
                     for (const p of plantillas.slice(0, 10)) {
@@ -91,9 +91,9 @@ function initConsole(client) {
                         const porEstado = {};
                         for (const g of gestionadas) porEstado[g.estado] = (porEstado[g.estado] || 0) + 1;
                         const detalle = Object.entries(porEstado).map(([e, n]) => `${e}: ${n}`).join(' · ');
-                        console.log(`[Consola] Actividad como instructor: ${gestionadas.length} gestionadas (${detalle}).`);
+                        console.log(`[Consola] Registro de gestiones: ${gestionadas.length} gestionadas (${detalle}).`);
                     } else {
-                        console.log(`[Consola] Actividad como instructor: ninguna.`);
+                        console.log(`[Consola] Registro de gestiones: ninguna.`);
                     }
                 }
             } else if (command === 'reclamaciones') {

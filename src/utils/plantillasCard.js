@@ -125,7 +125,7 @@ function buildActividadCard(targetUserId, proc) {
     const container = new ContainerBuilder()
         .setAccentColor(color)
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(`### ${process.env.emoji_oposiciones} ACTIVIDAD DE <@${targetUserId}> COMO INSTRUCTOR`)
+            new TextDisplayBuilder().setContent(`### ${process.env.emoji_oposiciones} REGISTRO DE <@${targetUserId}>`)
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(`-# Plantillas gestionadas por <@${targetUserId}> (reclamadas, aceptadas o denegadas)`)
@@ -143,7 +143,7 @@ function buildActividadCard(targetUserId, proc) {
         )
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                `**REGISTRO**\n-# Las ${Math.min(5, proc.length)} gestiones más recientes${proc.length > 5 ? ` de ${proc.length} en total` : ''}:\n${lineasActividad(proc, 5).join('\n')}`
+                `-# Las ${Math.min(3, proc.length)} gestiones más recientes${proc.length > 3 ? ` de ${proc.length} en total` : ''}:\n${lineasActividad(proc, 3).join('\n')}`
             )
         )
         .addTextDisplayComponents(
@@ -277,7 +277,7 @@ function buildPlantillasCard(targetUserId, opts = {}) {
         );
         container.addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                `**ACTIVIDAD COMO INSTRUCTOR**\n> ${resumenActividad(contarActividad(proc))} — Total **${proc.length}**\n${lineasActividad(proc, 3).join('\n')}\n-# Usá \`!plantillas vertotal\` para las estadísticas globales.`
+                `**REGISTRO DE GESTIONES**\n> ${resumenActividad(contarActividad(proc))} — Total **${proc.length}**\n${lineasActividad(proc, 3).join('\n')}\n-# Usá \`!plantillas vertotal\` para las estadísticas globales.`
             )
         );
     }
