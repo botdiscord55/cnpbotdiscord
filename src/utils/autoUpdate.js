@@ -3,12 +3,14 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..', '..');
 const REPO_CODIGO = process.env.GITHUB_CODEREPO || 'botdiscord55/cnpbotdiscord';
-const COMPROBAR_MS = 5 * 60 * 1000;
+const COMPROBAR_MS = 2 * 60 * 1000;
 const RESENTIR_MS = 30 * 60 * 1000;
 
 let intervalo = null;
+let localActivo = null;
 let ultimaRemotaVista = null;
 let ultimoAviso = 0;
+let ultimoFallo = 0;
 
 function shaLocal() {
     try {
@@ -40,37 +42,59 @@ async function shaRemoto() {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { error: `HTTP ${res.status}` };
     const j = await res.json();
-    return j && j.sha ? j.sha : null;
+    if (!j || !j.sha) return { error: 'respuesta inesperada de GitHub' };
+    return { sha: j.sha };
+}
+
+function anotarFallo(motivo) {
+    const ahora = Date.now();
+    if (ahora - ultimoFallo >= RESENTIR_MS) {
+        ultimoFallo = ahora;
+        console.log(`[AutoUpdate] ❌ No se pudo comprobar la versión: ${motivo}`);
+    }
+}
+
+async function comprobarVersion({ automatica = false } = {}) {
+    const local = localActivo || shaLocal();
+    if (!local) {
+        if (automatica) anotarFallo('no se pudo leer la versión local (.git)');
+        else console.log('[AutoUpdate] ⚠ No se pudo leer la versión local (.git).');
+        return null;
+    }
+    localActivo = local;
+
+    const r = await shaRemoto().catch(e => ({ error: e.message }));
+    if (r.error) {
+        if (automatica) anotarFallo(r.error);
+        else console.log(`[AutoUpdate] ❌ No se pudo comprobar con GitHub: ${r.error}`);
+        return null;
+    }
+
+    if (r.sha === local) {
+        if (!automatica) console.log(`[AutoUpdate] ✔ Al día: en marcha ${local.slice(0, 7)} = GitHub ${r.sha.slice(0, 7)}.`);
+        return false;
+    }
+
+    const ahora = Date.now();
+    if (automatica && r.sha === ultimaRemotaVista && ahora - ultimoAviso < RESENTIR_MS) return true;
+    ultimaRemotaVista = r.sha;
+    ultimoAviso = ahora;
+    console.log(`[AutoUpdate] ⚠ NUEVA VERSIÓN disponible en GitHub (${r.sha.slice(0, 7)}; en marcha: ${local.slice(0, 7)}). Reinicia Hiden para aplicarla.`);
+    return true;
 }
 
 function iniciarAutoUpdate() {
     if (intervalo) clearInterval(intervalo);
-
-    const local = shaLocal();
-    if (!local) {
+    localActivo = shaLocal();
+    if (!localActivo) {
         console.log('[AutoUpdate] ⚠ No se pudo leer la versión local (.git). Comprobaciones de versión desactivadas.');
         return;
     }
-
-    console.log(`[AutoUpdate] Versión en marcha: ${local.slice(0, 7)} · comprobando ${REPO_CODIGO} cada 5 min.`);
-
-    const comprobar = async () => {
-        try {
-            const remota = await shaRemoto();
-            if (!remota) return;
-            if (remota === local) return;
-            const ahora = Date.now();
-            if (remota === ultimaRemotaVista && ahora - ultimoAviso < RESENTIR_MS) return;
-            ultimaRemotaVista = remota;
-            ultimoAviso = ahora;
-            console.log(`[AutoUpdate] ⚠ NUEVA VERSIÓN disponible en GitHub (${remota.slice(0, 7)}; en marcha: ${local.slice(0, 7)}). Reinicia Hiden para aplicarla.`);
-        } catch {}
-    };
-
-    comprobar();
-    intervalo = setInterval(comprobar, COMPROBAR_MS);
+    console.log(`[AutoUpdate] Versión en marcha: ${localActivo.slice(0, 7)} · comprobando ${REPO_CODIGO} cada 2 min (escribe "version" para comprobar ya).`);
+    comprobarVersion({ automatica: false });
+    intervalo = setInterval(() => comprobarVersion({ automatica: true }), COMPROBAR_MS);
 }
 
-module.exports = { iniciarAutoUpdate };
+module.exports = { iniciarAutoUpdate, comprobarVersion };

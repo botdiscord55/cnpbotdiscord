@@ -15,6 +15,7 @@ const { limpiarMensajes, limpiarMensaje } = require('./utils/limpiarMensajes');
 const { recuperarPlantillas } = require('./utils/recuperarPlantillas');
 const { publicarConvocatoria } = require('./utils/crearOposicion');
 const { hacerRespaldo, restaurarRespaldo } = require('./utils/respaldoGitHub');
+const { comprobarVersion } = require('./utils/autoUpdate');
 const { createOposicion, getOposicion } = require('./database/oposiciones');
 const { getPlantilla, getPlantillasByUser, getPlantillasProcesadasPor, deletePlantilla } = require('./database/plantillas');
 const { getReclamacionesByInstructor, deleteReclamacion } = require('./database/reclamaciones');
@@ -46,6 +47,7 @@ function initConsole(client) {
     console.log('[Consola] ─── RESPALDO ─────────────────────────────────────');
     console.log('[Consola]   respaldo                          -> sube la BD al repo privado de GitHub ahora mismo');
     console.log('[Consola]   restaurar                         -> restaura la BD desde el último respaldo de GitHub');
+    console.log('[Consola]   version                           -> comprueba ahora mismo si hay versión nueva del bot');
     console.log('');
     console.log('[Consola] ─── TEST ──────────────────────────────────────────');
     console.log('[Consola]   vetotest [id_usuario] [días]          -> veto de prueba en el canal de vetos');
@@ -236,6 +238,8 @@ function initConsole(client) {
                 const r = await restaurarRespaldo(client, { forzar: true });
                 if (r.ok) console.log(`[Consola] OK: BD restaurada desde GitHub (${r.escritos} archivo(s)).`);
                 else console.log(`[Consola] Error: ${r.motivo || r.error}`);
+            } else if (command === 'version') {
+                await comprobarVersion();
 
             // ─── TEST ───
             } else if (command === 'vetotest') {
@@ -330,6 +334,7 @@ function initConsole(client) {
                 console.log('[Consola] ─── RESPALDO ─────────────────────────────────────');
                 console.log('[Consola]   respaldo');
                 console.log('[Consola]   restaurar');
+                console.log('[Consola]   version');
                 console.log('');
                 console.log('[Consola] ─── TEST ──────────────────────────────────────────');
                 console.log('[Consola]   vetotest [id_usuario] [días]');
