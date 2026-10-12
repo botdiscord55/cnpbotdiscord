@@ -208,13 +208,6 @@ function buildPlantillasCard(targetUserId, opts = {}) {
     return { container, plantillas, counts };
 }
 
-function filtrarPeriodo(plantillas, period) {
-    const def = PERIODOS.find(p => p.value === period) || PERIODOS[PERIODOS.length - 1];
-    if (!def.dias) return plantillas;
-    const limite = Date.now() - def.dias * 86400000;
-    return plantillas.filter(p => new Date(p.fechaCreacion || 0).getTime() >= limite);
-}
-
 function agruparPorEstado(plantillas) {
     const grupos = [];
     for (const estado of ORDEN_ESTADOS) {
