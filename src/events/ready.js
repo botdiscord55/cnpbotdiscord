@@ -2,6 +2,7 @@ const { Events } = require('discord.js');
 const { iniciarArchivador } = require('../utils/archivarMensual');
 const { iniciarRespaldo, restaurarRespaldo, necesitaRestaurar } = require('../utils/respaldoGitHub');
 const { iniciarAutoUpdate } = require('../utils/autoUpdate');
+const { iniciarSweepOposiciones } = require('../utils/oposicionesSweep');
 
 module.exports = {
     name: Events.ClientReady,
@@ -23,6 +24,7 @@ module.exports = {
 
         iniciarRespaldo(client);
         iniciarAutoUpdate();
+        iniciarSweepOposiciones(client);
         iniciarArchivador();
     },
 };

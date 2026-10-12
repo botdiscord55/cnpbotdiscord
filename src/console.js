@@ -14,6 +14,7 @@ const { limpiarRegistro } = require('./utils/limpiarRegistro');
 const { limpiarMensajes, limpiarMensaje } = require('./utils/limpiarMensajes');
 const { recuperarPlantillas } = require('./utils/recuperarPlantillas');
 const { publicarConvocatoria } = require('./utils/crearOposicion');
+const { cerrarVencidas, cerrarOposicionManual } = require('./utils/oposicionesSweep');
 const { hacerRespaldo, restaurarRespaldo } = require('./utils/respaldoGitHub');
 const { comprobarVersion } = require('./utils/autoUpdate');
 const { createOposicion, getOposicion } = require('./database/oposiciones');
@@ -40,6 +41,8 @@ function initConsole(client) {
     console.log('[Consola] ─── OPOSICIONES ────────────────────────────────────');
     console.log('[Consola]   crearoposicion <código> <fecha> <hora>      -> crea y publica convocatoria');
     console.log('[Consola]   crearoposicionquiet <código> [fecha] [hora] -> crea sin publicar nada (sin pings)');
+    console.log('[Consola]   cerraroposicion <código>                   -> cierra esa oposición ahora mismo');
+    console.log('[Consola]   cerraroposiciones                          -> cierra todas las vencidas (las que ya toca cerrar)');
     console.log('');
     console.log('[Consola] ─── MENSAJES ─────────────────────────────────────');
     console.log('[Consola]   enviardm <id_usuario> <mensaje>     -> envía un MD a un usuario');
@@ -209,6 +212,21 @@ function initConsole(client) {
                     });
                     console.log(`[Consola] OK: oposición ${codigo} creada en silencio (${fecha} ${hora}).`);
                 }
+            } else if (command === 'cerraroposicion') {
+                const codigo = (args[0] || '').toUpperCase().trim();
+                if (!codigo) {
+                    console.log('[Consola] Uso: cerraroposicion <código> (ej: cerraroposicion OPS-1K8N)');
+                } else {
+                    const r = await cerrarOposicionManual(client, codigo);
+                    if (r.error) console.log(`[Consola] ${r.error}`);
+                    else console.log(`[Consola] OK: ${codigo} cerrada → estado "${r.estado}".`);
+                }
+            } else if (command === 'cerraroposiciones') {
+                const r = await cerrarVencidas(client);
+                if (r.ocupado) console.log('[Consola] Hay un barrido en curso, vuelve a intentarlo en unos segundos.');
+                else if (!r.cerradas.length) console.log('[Consola] OK: no había oposiciones vencidas (las activas siguen vigentes).');
+                else console.log(`[Consola] OK: ${r.cerradas.length} oposición(es) vencida(s) cerrada(s): ${r.cerradas.join(', ')}.`);
+
 
             // ─── MENSAJES ───
             } else if (command === 'enviardm') {
@@ -327,6 +345,8 @@ function initConsole(client) {
                 console.log('[Consola] ─── OPOSICIONES ────────────────────────────────────');
                 console.log('[Consola]   crearoposicion <código> <fecha> <hora>');
                 console.log('[Consola]   crearoposicionquiet <código> [fecha] [hora]');
+                console.log('[Consola]   cerraroposicion <código>');
+                console.log('[Consola]   cerraroposiciones');
                 console.log('');
                 console.log('[Consola] ─── MENSAJES ─────────────────────────────────────');
                 console.log('[Consola]   enviardm <id_usuario> <mensaje>');
