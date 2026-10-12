@@ -32,20 +32,44 @@ function shaLocal() {
     }
 }
 
-async function shaRemoto() {
+async function pedirSha(conToken) {
+    const headers = {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'cnp-bot',
+    };
     const token = process.env.GITHUB_TOKEN;
-    const res = await fetch(`https://api.github.com/repos/${REPO_CODIGO}/commits/main`, {
-        headers: {
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
-            'User-Agent': 'cnp-bot',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-    });
+    if (conToken && token) headers.Authorization = `Bearer ${token}`;
+    return fetch(`https://api.github.com/repos/${REPO_CODIGO}/commits/main`, { headers });
+}
+
+async function shaRemoto() {
+    const hayToken = !!process.env.GITHUB_TOKEN;
+    let conToken = hayToken;
+    let res;
+    try {
+        res = await pedirSha(true);
+    } catch (e) {
+        if (!conToken) return { error: e.message };
+        conToken = false;
+        try { res = await pedirSha(false); } catch (e2) { return { error: `${e.message} (y sin token: ${e2.message})` }; }
+    }
+
+    if (conToken && !res.ok && [401, 403, 404].includes(res.status)) {
+        const statusConToken = res.status;
+        conToken = false;
+        try {
+            res = await pedirSha(false);
+        } catch (e) {
+            return { error: `HTTP ${statusConToken} con token (y sin token: ${e.message})` };
+        }
+        if (!res.ok) return { error: `HTTP ${statusConToken} con token y HTTP ${res.status} sin token` };
+    }
+
     if (!res.ok) return { error: `HTTP ${res.status}` };
     const j = await res.json();
     if (!j || !j.sha) return { error: 'respuesta inesperada de GitHub' };
-    return { sha: j.sha };
+    return { sha: j.sha, fuente: conToken ? 'con token' : 'sin token (pública)' };
 }
 
 function anotarFallo(motivo) {
@@ -68,12 +92,12 @@ async function comprobarVersion({ automatica = false } = {}) {
     const r = await shaRemoto().catch(e => ({ error: e.message }));
     if (r.error) {
         if (automatica) anotarFallo(r.error);
-        else console.log(`[AutoUpdate] ❌ No se pudo comprobar con GitHub: ${r.error}`);
+        else console.log(`[AutoUpdate] ❌ No se pudo comprobar con GitHub: ${r.error} (local: ${local.slice(0, 7)}).`);
         return null;
     }
 
     if (r.sha === local) {
-        if (!automatica) console.log(`[AutoUpdate] ✔ Al día: en marcha ${local.slice(0, 7)} = GitHub ${r.sha.slice(0, 7)}.`);
+        if (!automatica) console.log(`[AutoUpdate] ✔ Al día: en marcha ${local.slice(0, 7)} = GitHub ${r.sha.slice(0, 7)} · consulta: ${r.fuente}.`);
         return false;
     }
 
@@ -81,7 +105,7 @@ async function comprobarVersion({ automatica = false } = {}) {
     if (automatica && r.sha === ultimaRemotaVista && ahora - ultimoAviso < RESENTIR_MS) return true;
     ultimaRemotaVista = r.sha;
     ultimoAviso = ahora;
-    console.log(`[AutoUpdate] ⚠ NUEVA VERSIÓN disponible en GitHub (${r.sha.slice(0, 7)}; en marcha: ${local.slice(0, 7)}). Reinicia Hiden para aplicarla.`);
+    console.log(`[AutoUpdate] ⚠ NUEVA VERSIÓN disponible en GitHub (${r.sha.slice(0, 7)}; en marcha: ${local.slice(0, 7)}${automatica ? '' : ` · consulta: ${r.fuente}`}). Reinicia Hiden para aplicarla.`);
     return true;
 }
 
