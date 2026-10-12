@@ -110,7 +110,11 @@ async function hacerRespaldo(client, { forzar = false } = {}) {
         if (!patchRes.ok) return { ok: false, error: `ref: HTTP ${patchRes.status}` };
 
         ultimoHash = hash;
-        return { ok: true, bytes };
+        const detalle = Object.entries(datos)
+            .filter(([, c]) => c != null)
+            .map(([f, c]) => `${f} ${Buffer.byteLength(c, 'utf8')} B`)
+            .join(' · ');
+        return { ok: true, bytes, sha: newCommit.sha, archivos: detalle };
     } catch (e) {
         return { ok: false, error: e.message };
     } finally {
@@ -159,11 +163,35 @@ function iniciarRespaldo(client) {
         console.log('[Respaldo] ⚠ GITHUB_TOKEN no configurado, respaldos desactivados.');
         return;
     }
-    console.log(`[Respaldo] Activado → ${REPO} (cada 60s, solo si hay cambios).`);
+
+    const datos = leerTodo();
+    let plantillas = '?';
+    try { plantillas = Object.keys(JSON.parse(datos['plantillas.json'] || '{}')).length; } catch {}
+    const bytesLocal = Object.values(datos).filter(c => c != null).reduce((n, c) => n + Buffer.byteLength(c, 'utf8'), 0);
+
+    console.log(`[Respaldo] Activado → ${REPO} (comprueba cada 60 s y sube solo si hay cambios).`);
+    console.log(`[Respaldo] BD local: ${plantillas} plantilla(s) · ${bytesLocal} B.`);
+    console.log(`[Respaldo] Se respalda TODO: ${ARCHIVOS.join(' · ')}.`);
+
+    let ticks = 0;
+    let ultimaSubida = null;
     intervalo = setInterval(async () => {
+        ticks++;
         const r = await hacerRespaldo(client);
-        if (r.ok && !r.sinCambios) console.log(`[Respaldo] ✅ Subido a GitHub (${r.bytes} bytes).`);
-        else if (!r.ok) console.log(`[Respaldo] ❌ ${r.error}`);
+        if (r.ok && !r.sinCambios) {
+            ultimaSubida = new Date();
+            console.log(`[Respaldo] ✅ ACTUALIZADO en GitHub a las ${ultimaSubida.toTimeString().slice(0, 5)} — commit ${String(r.sha).slice(0, 7)} · ${r.bytes} B · ${r.archivos}`);
+        } else if (!r.ok) {
+            console.log(`[Respaldo] ❌ ${r.error}`);
+        } else if (ticks === 1) {
+            console.log('[Respaldo] ✔ Primera comprobación completada: sin cambios (lo más reciente ya está en GitHub).');
+        } else if (ticks % 10 === 0) {
+            const act = leerTodo();
+            const bytes = Object.values(act).filter(c => c != null).reduce((n, c) => n + Buffer.byteLength(c, 'utf8'), 0);
+            let n = '?';
+            try { n = Object.keys(JSON.parse(act['plantillas.json'] || '{}')).length; } catch {}
+            console.log(`[Respaldo] ✔ En línea · sin cambios · ${n} plantilla(s) · ${bytes} B${ultimaSubida ? ` · última subida ${ultimaSubida.toTimeString().slice(0, 5)}` : ''}`);
+        }
     }, INTERVALO_MS);
 }
 

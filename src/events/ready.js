@@ -1,6 +1,7 @@
 const { Events } = require('discord.js');
 const { iniciarArchivador } = require('../utils/archivarMensual');
 const { iniciarRespaldo, restaurarRespaldo, necesitaRestaurar } = require('../utils/respaldoGitHub');
+const { iniciarAutoUpdate } = require('../utils/autoUpdate');
 
 module.exports = {
     name: Events.ClientReady,
@@ -16,9 +17,12 @@ module.exports = {
             const r = await restaurarRespaldo(client);
             if (r.ok) console.log(`[Respaldo] ✅ BD restaurada desde GitHub (${r.escritos} archivo(s)).`);
             else console.log(`[Respaldo] ❌ No se pudo restaurar: ${r.motivo || r.error}`);
+        } else {
+            console.log('[Respaldo] ✔ BD local intacta (no hace falta restaurar).');
         }
 
         iniciarRespaldo(client);
+        iniciarAutoUpdate();
         iniciarArchivador();
     },
 };
