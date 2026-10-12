@@ -228,7 +228,8 @@ function initConsole(client) {
             // ─── RESPALDO ───
             } else if (command === 'respaldo') {
                 const r = await hacerRespaldo(client, { forzar: true });
-                if (r.ok && r.sinCambios) console.log('[Consola] OK: sin cambios, no hacía falta subir nada.');
+                if (r.ocupado) console.log('[Consola] Hay una subida en curso, vuelve a intentarlo en unos segundos.');
+                else if (r.ok && r.sinCambios) console.log('[Consola] OK: sin cambios, no hacía falta subir nada.');
                 else if (r.ok) console.log(`[Consola] OK: respaldo subido a GitHub — commit ${String(r.sha).slice(0, 7)} · ${r.bytes} bytes · ${r.archivos}`);
                 else console.log(`[Consola] Error: ${r.error}`);
             } else if (command === 'restaurar') {

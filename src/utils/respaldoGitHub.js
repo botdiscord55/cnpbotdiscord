@@ -56,7 +56,7 @@ function necesitaRestaurar() {
 }
 
 async function hacerRespaldo(client, { forzar = false } = {}) {
-    if (subiendo) return { ok: false, error: 'ya hay un respaldo en curso' };
+    if (subiendo) return { ok: false, ocupado: true, error: 'ya hay un respaldo en curso' };
     if (!token()) return { ok: false, error: 'falta GITHUB_TOKEN en .env' };
 
     subiendo = true;
@@ -178,6 +178,7 @@ function iniciarRespaldo(client) {
     intervalo = setInterval(async () => {
         ticks++;
         const r = await hacerRespaldo(client);
+        if (r.ocupado) return;
         if (r.ok && !r.sinCambios) {
             ultimaSubida = new Date();
             console.log(`[Respaldo] ✅ ACTUALIZADO en GitHub a las ${ultimaSubida.toTimeString().slice(0, 5)} — commit ${String(r.sha).slice(0, 7)} · ${r.bytes} B · ${r.archivos}`);
