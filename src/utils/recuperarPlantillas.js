@@ -35,7 +35,12 @@ function escribirDB(nuevas) {
         db[id] = reg;
         anadidas++;
     }
-    if (anadidas) fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+    if (anadidas) {
+        const contenido = JSON.stringify(db, null, 2);
+        const tmp = `${DB_PATH}.tmp`;
+        fs.writeFileSync(tmp, contenido);
+        try { fs.renameSync(tmp, DB_PATH); } catch { fs.writeFileSync(DB_PATH, contenido); }
+    }
     return anadidas;
 }
 

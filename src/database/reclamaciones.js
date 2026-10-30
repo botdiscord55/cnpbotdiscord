@@ -13,7 +13,10 @@ function loadDB() {
 }
 
 function saveDB(data) {
-    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+    const contenido = JSON.stringify(data, null, 2);
+    const tmp = `${DB_PATH}.tmp`;
+    fs.writeFileSync(tmp, contenido);
+    try { fs.renameSync(tmp, DB_PATH); } catch { fs.writeFileSync(DB_PATH, contenido); }
 }
 
 function registrarReclamacion({ plantillaId, userId, userTag, reclamadaPor, reclamadaTag, reclamadaNickname }) {

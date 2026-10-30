@@ -8,7 +8,10 @@ function load() {
 }
 
 function save(db) {
-    fs.writeFileSync(FILE, JSON.stringify(db, null, 2));
+    const contenido = JSON.stringify(db, null, 2);
+    const tmp = `${FILE}.tmp`;
+    fs.writeFileSync(tmp, contenido);
+    try { fs.renameSync(tmp, FILE); } catch { fs.writeFileSync(FILE, contenido); }
 }
 
 function registrarTestMsg(messageId, channelId, tipo) {

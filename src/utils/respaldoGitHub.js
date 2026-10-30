@@ -145,7 +145,10 @@ async function restaurarRespaldo(client, { forzar = false } = {}) {
 
         let escritos = 0;
         for (const [f, contenido] of Object.entries(tmpDir)) {
-            fs.writeFileSync(path.join(DB_DIR, f), contenido);
+            const destino = path.join(DB_DIR, f);
+            const tmp = `${destino}.tmp`;
+            fs.writeFileSync(tmp, contenido);
+            try { fs.renameSync(tmp, destino); } catch { fs.writeFileSync(destino, contenido); }
             escritos++;
         }
 

@@ -40,8 +40,17 @@ async function pedirSha(conToken) {
     };
     const token = process.env.GITHUB_TOKEN;
     if (conToken && token) headers.Authorization = `Bearer ${token}`;
-    return fetch(`https://api.github.com/repos/${REPO_CODIGO}/commits/main`, { headers });
+    const ctrl = new AbortController();
+    const reloj = setTimeout(() => ctrl.abort(), 15000);
+    if (reloj.unref) reloj.unref();
+    try {
+        return await fetch(`https://api.github.com/repos/${REPO_CODIGO}/commits/main`, { headers, signal: ctrl.signal });
+    } finally {
+        clearTimeout(reloj);
+    }
 }
+
+const msgErr = (e) => (e && e.name === 'AbortError') ? 'timeout de 15 s consultando GitHub' : (e && e.message) || e;
 
 async function shaRemoto() {
     const hayToken = !!process.env.GITHUB_TOKEN;
@@ -50,9 +59,9 @@ async function shaRemoto() {
     try {
         res = await pedirSha(true);
     } catch (e) {
-        if (!conToken) return { error: e.message };
+        if (!conToken) return { error: msgErr(e) };
         conToken = false;
-        try { res = await pedirSha(false); } catch (e2) { return { error: `${e.message} (y sin token: ${e2.message})` }; }
+        try { res = await pedirSha(false); } catch (e2) { return { error: `${msgErr(e)} (y sin token: ${msgErr(e2)})` }; }
     }
 
     if (conToken && !res.ok && [401, 403, 404].includes(res.status)) {
@@ -61,7 +70,7 @@ async function shaRemoto() {
         try {
             res = await pedirSha(false);
         } catch (e) {
-            return { error: `HTTP ${statusConToken} con token (y sin token: ${e.message})` };
+            return { error: `HTTP ${statusConToken} con token (y sin token: ${msgErr(e)})` };
         }
         if (!res.ok) return { error: `HTTP ${statusConToken} con token y HTTP ${res.status} sin token` };
     }
