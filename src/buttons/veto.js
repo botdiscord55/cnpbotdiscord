@@ -106,11 +106,20 @@ async function checkRole(member) {
 
 async function revokeVeto(interaction, targetUserId, nickname, motivoVeto, esTest = false, enviarLog = true) {
     if (!esTest) {
-        const vetoRoleId = process.env.vetoedadooc_insuficiente;
-        if (vetoRoleId) {
-            const solicitante = await interaction.guild.members.fetch(targetUserId);
-            if (solicitante.roles.cache.has(vetoRoleId)) {
-                await solicitante.roles.remove(vetoRoleId);
+        const rolesQuitar = [process.env.vetoedadooc_insuficiente, process.env.rolveto_academico].filter(Boolean);
+        if (rolesQuitar.length) {
+            const solicitante = await interaction.guild.members.fetch(targetUserId).catch(() => null);
+            if (solicitante) {
+                for (const roleId of rolesQuitar) {
+                    if (solicitante.roles.cache.has(roleId)) {
+                        await solicitante.roles.remove(roleId).catch(() => {});
+                    }
+                }
+                try {
+                    if (solicitante.isCommunicationDisabled && solicitante.isCommunicationDisabled()) {
+                        await solicitante.timeout(null, `Veto ${motivoVeto}: retirado manualmente`);
+                    }
+                } catch {}
             }
         }
     }

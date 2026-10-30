@@ -3,6 +3,7 @@ const { iniciarArchivador } = require('../utils/archivarMensual');
 const { iniciarRespaldo, restaurarRespaldo, necesitaRestaurar } = require('../utils/respaldoGitHub');
 const { iniciarAutoUpdate } = require('../utils/autoUpdate');
 const { iniciarSweepOposiciones } = require('../utils/oposicionesSweep');
+const { iniciarSweepVetos } = require('../utils/vetoSweep');
 
 module.exports = {
     name: Events.ClientReady,
@@ -25,6 +26,7 @@ module.exports = {
         iniciarRespaldo(client);
         iniciarAutoUpdate();
         iniciarSweepOposiciones(client);
+        iniciarSweepVetos(client);
         iniciarArchivador();
     },
 };

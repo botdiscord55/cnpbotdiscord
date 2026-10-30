@@ -26,11 +26,23 @@ function getVeto(vetoId) {
 
 function getVetoByUser(userId, { includeTest = false } = {}) {
     const db = loadDB();
+    const ahora = Date.now();
     return Object.entries(db).find(([, v]) =>
         v.userId === userId &&
         (v.estado === 'activo' || v.estado === 'confirmado') &&
-        (includeTest || v.test !== true)
+        (includeTest || v.test !== true) &&
+        !(v.expiresAt && Date.parse(v.expiresAt) <= ahora)
     ) || null;
+}
+
+function getVetosExpirados() {
+    const db = loadDB();
+    const ahora = Date.now();
+    return Object.entries(db).filter(([, v]) =>
+        (v.estado === 'activo' || v.estado === 'confirmado') &&
+        v.expiresAt &&
+        Date.parse(v.expiresAt) <= ahora
+    );
 }
 
 function createVeto(data) {
@@ -82,6 +94,11 @@ function getVetosByUser(userId) {
         .map(([id, v]) => ({ id, ...v }));
 }
 
+function getTodosVetos() {
+    const db = loadDB();
+    return Object.entries(db).map(([id, v]) => ({ id, ...v }));
+}
+
 function getVetosActivos() {
     const db = loadDB();
     return Object.values(db).filter(v => v.estado === 'activo');
@@ -104,4 +121,4 @@ function cleanRevoked() {
 
 setInterval(cleanRevoked, 30 * 60 * 1000).unref();
 
-module.exports = { getVeto, getVetoByUser, createVeto, updateVeto, getVetosActivos, deleteVeto, getVetosTest, getVetosByUser };
+module.exports = { getVeto, getVetoByUser, createVeto, updateVeto, getVetosActivos, deleteVeto, getVetosTest, getVetosByUser, getVetosExpirados, getTodosVetos };

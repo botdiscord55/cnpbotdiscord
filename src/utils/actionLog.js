@@ -39,6 +39,9 @@ const ACTION_NAMES = {
     'plantillas_period_': 'filtrar los registros de plantillas',
     'plantillas_totalcsv_': 'exportar todas las plantillas (CSV)',
     'plantillas_totaljson_': 'exportar todas las plantillas (JSON)',
+    'evadur_': 'elegir la duración del veto de evasión',
+    'evamod_': 'elegir la duración personalizada del veto de evasión',
+    'evadenegar_': 'no vetar la evasión',
 };
 
 const SKIP_SUCCESS = new Set([
@@ -79,6 +82,10 @@ function resolveActionNombre(interaction, key) {
         if (v === 'denegar') return 'denegar la plantilla';
         if (v === 'cancelar') return 'cancelar la reclamación';
         return 'decidir sobre la plantilla';
+    }
+    if (key === 'evadur_') {
+        const v = (interaction.values && interaction.values[0]) || '';
+        return v === 'custom' ? 'elegir una duración personalizada del veto de evasión' : `vetar la evasión durante ${v}`;
     }
     if (ACTION_NAMES[key]) return ACTION_NAMES[key];
     return key.replace(/[_|]+$/, '');
@@ -133,6 +140,11 @@ function actionExtra(interaction, key, rawId) {
             const v = vetoId ? getVeto(vetoId) : null;
             if (v) return v.motivo ? `sobre <@${v.userId}> — motivo: ${v.motivo}` : `sobre <@${v.userId}>`;
         }
+
+        if (key === 'evadur_' || key === 'evamod_' || key === 'evadenegar_') {
+            const userId = String(rawId || '').replace(/^test_/, '');
+            return /^\d{15,21}$/.test(userId) ? `sobre <@${userId}>` : '';
+        }
     } catch {}
     return '';
 }
@@ -140,6 +152,11 @@ function actionExtra(interaction, key, rawId) {
 function esTestDeCustomId(customId) {
     try {
         if (!customId || typeof customId !== 'string') return false;
+
+        const EVASION_PREFIXES = ['evadur_', 'evamod_', 'evadenegar_'];
+        for (const pref of EVASION_PREFIXES) {
+            if (customId.startsWith(pref)) return customId.slice(pref.length).startsWith('test_');
+        }
 
         if (customId.startsWith('quitar_veto_') || customId.startsWith('modal_quitar_veto_')) {
             const rest = customId.startsWith('modal_quitar_veto_')

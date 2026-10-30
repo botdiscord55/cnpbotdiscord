@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DB_DIR = path.join(__dirname, '..', 'database');
-const ARCHIVOS = ['plantillas.json', 'reclamaciones.json', 'oposiciones.json', 'vetos.json', 'suspendidas.json', 'testmsgs.json'];
+const ARCHIVOS = ['plantillas.json', 'reclamaciones.json', 'oposiciones.json', 'vetos.json', 'suspendidas.json', 'testmsgs.json', 'miembros.json'];
 const INTERVALO_MS = 60000;
 
 const REPO = process.env.GITHUB_DATAREPO || 'botdiscord55/cnpbotdatos';

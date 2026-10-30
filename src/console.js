@@ -20,6 +20,10 @@ const { comprobarVersion } = require('./utils/autoUpdate');
 const { createOposicion, getOposicion } = require('./database/oposiciones');
 const { getPlantilla, getPlantillasByUser, getPlantillasProcesadasPor, deletePlantilla } = require('./database/plantillas');
 const { getReclamacionesByInstructor, deleteReclamacion } = require('./database/reclamaciones');
+const { getMiembro, setMiembro, deleteMiembro } = require('./database/miembros');
+const { getVetoByUser, getTodosVetos } = require('./database/vetos');
+const { evaluarRama, rolesRestaurables, restaurarMiembro, enviarTarjetaEvasion } = require('./utils/evasion');
+const { barredVetos } = require('./utils/vetoSweep');
 
 function initConsole(client) {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
@@ -55,6 +59,13 @@ function initConsole(client) {
     console.log('[Consola] ─── TEST ──────────────────────────────────────────');
     console.log('[Consola]   vetotest [id_usuario] [días]          -> veto de prueba en el canal de vetos');
     console.log('[Consola]   testtramiteck <id_usuario>            -> envía tarjeta CK al canal de registro sin tocar nada');
+    console.log('');
+    console.log('[Consola] ─── EVASIÓN ─────────────────────────────────────');
+    console.log('[Consola]   evasiontest [id_usuario]              -> tarjeta 🧪 de evasión en #vetos (sin pings) + dry-run del árbol');
+    console.log('[Consola]   evasionsnapshot <id_usuario> [borrar] -> guarda o borra el snapshot de roles y apodo');
+    console.log('[Consola]   evasionrestore <id_usuario>           -> restaura roles y apodo desde el snapshot (sin avisos)');
+    console.log('[Consola]   vetos                                 -> lista los vetos con su tiempo restante');
+    console.log('[Consola]   vetosweep                             -> retira ahora los vetos ya caducados');
     console.log('');
     console.log('[Consola] Escribe "ayuda" para volver a ver esto.');
     console.log('');
@@ -326,6 +337,128 @@ function initConsole(client) {
                     }
                 }
 
+            // ─── EVASIÓN ───
+            } else if (command === 'evasiontest') {
+                const userId = arg || process.env.duenio_delbot;
+                if (!/^\d{15,21}$/.test(userId)) {
+                    console.log('[Consola] Uso: evasiontest [id_usuario]');
+                } else {
+                    const guild = client.guilds.cache.first();
+                    const member = await guild.members.fetch(userId).catch(() => null);
+                    const snapshot = getMiembro(userId);
+                    const { rama, detalle } = evaluarRama(snapshot, {
+                        rolAceptada: process.env.rolplantilla_aceptada,
+                        rolDenegada2: process.env.rolplantilla_denegada2,
+                    });
+
+                    console.log(`[Consola] ── Dry-run de reentrada de ${userId}${member ? ` (${member.user.tag})` : ' (no está en el servidor)'} ──`);
+                    if (snapshot) {
+                        const nombres = (snapshot.roles || []).map(id => {
+                            const r = guild && guild.roles.cache.get(id);
+                            return r ? `${r.name} (\`${id}\`)` : `\`${id}\` (ya no existe)`;
+                        });
+                        console.log(`  Snapshot: ${nombres.length} rol(es)${snapshot.nick ? `, apodo "${snapshot.nick}"` : ''} — guardado el ${snapshot.fechaSalida}`);
+                        for (const n of nombres) console.log(`    - ${n}`);
+                    } else {
+                        console.log('  Snapshot: ninguno (sin registro de salida).');
+                    }
+                    console.log(`  Rama que tomaría al reentrar: ${rama.toUpperCase()} — ${detalle}`);
+
+                    const entry = getVetoByUser(userId, { includeTest: true });
+                    if (entry) {
+                        const [vetoId, v] = entry;
+                        const restante = v.expiresAt ? Date.parse(v.expiresAt) - Date.now() : null;
+                        const textoRestante = restante == null ? 'indefinido' : restante > 0 ? `${Math.round(restante / 360000) / 10} h` : 'ya caducado';
+                        const muteRestante = v.muteHasta ? Date.parse(v.muteHasta) - Date.now() : null;
+                        console.log(`  Veto activo: ${vetoId}${v.test ? ' | TEST' : ''} — restante: ${textoRestante}${muteRestante > 0 ? ` · mute restante: ${Math.round(muteRestante / 360000) / 10} h` : ''}`);
+                    } else {
+                        console.log('  Veto activo: ninguno.');
+                    }
+
+                    if (!member) {
+                        console.log('  (no se envía la tarjeta: el usuario no está en el servidor)');
+                    } else {
+                        const roles = rolesRestaurables(member);
+                        await enviarTarjetaEvasion(client, { userId, nick: member.nickname, rolesRestaurados: roles.map(r => r.name), esTest: true });
+                        console.log(`[Consola] OK: tarjeta 🧪 de evasión enviada a #vetos con ${roles.length} rol(es) — sin pings y registrada para limpiartest.`);
+                    }
+                }
+            } else if (command === 'evasionsnapshot') {
+                const userId = arg;
+                if (!/^\d{15,21}$/.test(userId)) {
+                    console.log('[Consola] Uso: evasionsnapshot <id_usuario> [borrar]');
+                } else if ((args[1] || '').toLowerCase() === 'borrar') {
+                    const ok = deleteMiembro(userId);
+                    console.log(ok ? `[Consola] OK: snapshot de ${userId} eliminado.` : `[Consola] ${userId} no tenía snapshot.`);
+                } else {
+                    const guild = client.guilds.cache.first();
+                    const member = await guild.members.fetch(userId).catch(() => null);
+                    if (!member) {
+                        console.log(`[Consola] ${userId} no está en el servidor, no hay roles que guardar.`);
+                    } else {
+                        const roles = rolesRestaurables(member);
+                        setMiembro(userId, { nick: member.nickname || null, roles: roles.map(r => r.id) });
+                        console.log(`[Consola] OK: snapshot de ${userId} guardado — ${roles.length} rol(es)${member.nickname ? `, apodo "${member.nickname}"` : ''}.`);
+                        for (const r of roles) console.log(`    - ${r.name} (\`${r.id}\`)`);
+                    }
+                }
+            } else if (command === 'evasionrestore') {
+                const userId = arg;
+                if (!/^\d{15,21}$/.test(userId)) {
+                    console.log('[Consola] Uso: evasionrestore <id_usuario>');
+                } else {
+                    const snapshot = getMiembro(userId);
+                    if (!snapshot) {
+                        console.log(`[Consola] ${userId} no tiene snapshot guardado (usa evasionsnapshot para crearlo).`);
+                    } else {
+                        const guild = client.guilds.cache.first();
+                        const member = await guild.members.fetch(userId).catch(() => null);
+                        if (!member) {
+                            console.log(`[Consola] ${userId} no está en el servidor, no se puede restaurar.`);
+                        } else {
+                            const r = await restaurarMiembro(member, snapshot);
+                            console.log(`[Consola] OK: ${r.restaurados.length} rol(es) restaurado(s)${r.restaurados.length ? ` — ${r.restaurados.join(' · ')}` : ''}${r.nickRestaurado ? ' + apodo' : ''}.`);
+                        }
+                    }
+                }
+            } else if (command === 'vetos') {
+                const vetos = getTodosVetos();
+                if (!vetos.length) {
+                    console.log('[Consola] No hay vetos registrados.');
+                } else {
+                    const ahora = Date.now();
+                    const lista = vetos.slice(-30);
+                    console.log(`[Consola] Vetos: ${vetos.length} total, mostrando los últimos ${lista.length}.`);
+                    for (const v of lista) {
+                        let estado = v.estado;
+                        if ((estado === 'activo' || estado === 'confirmado') && v.expiresAt && Date.parse(v.expiresAt) <= ahora) {
+                            estado = 'caducado (pendiente de barrer)';
+                        }
+                        let tiempo = 'indefinido';
+                        if (v.expiresAt) {
+                            const diff = Date.parse(v.expiresAt) - ahora;
+                            tiempo = diff > 0 ? `restan ${Math.round(diff / 360000) / 10} h` : `caducó hace ${Math.round(-diff / 360000) / 10} h`;
+                        }
+                        const mute = v.muteHasta && Date.parse(v.muteHasta) > ahora ? ` · mute: ${Math.round((Date.parse(v.muteHasta) - ahora) / 360000) / 10} h` : '';
+                        console.log(`  - ${v.id} | user ${v.userId} | ${estado}${v.test ? ' | TEST' : ''} | ${tiempo}${mute} | ${v.motivo}`);
+                    }
+                }
+            } else if (command === 'vetosweep') {
+                const r = await barredVetos(client);
+                if (r.ocupado) {
+                    console.log('[Consola] Hay un barrido de vetos en curso, vuelve a intentarlo en unos segundos.');
+                } else if (!r.retirados.length) {
+                    console.log('[Consola] OK: no había vetos caducados.');
+                } else {
+                    console.log(`[Consola] OK: ${r.retirados.length} veto(s) caducado(s) retirado(s):`);
+                    for (const x of r.retirados) {
+                        const detalle = x.test ? 'TEST (solo marcado)'
+                            : x.detalles && x.detalles.length ? `retirado: ${x.detalles.join(' y ')}`
+                            : 'no está en el servidor: se le retirará al volver';
+                        console.log(`  - ${x.vetoId} | user ${x.userId} | ${detalle}`);
+                    }
+                }
+
             // ─── AYUDA ───
             } else if (command === 'ayuda' || command === 'help' || command === 'comandos') {
                 console.log('');
@@ -359,6 +492,13 @@ function initConsole(client) {
                 console.log('[Consola] ─── TEST ──────────────────────────────────────────');
                 console.log('[Consola]   vetotest [id_usuario] [días]');
                 console.log('[Consola]   testtramiteck <id_usuario>');
+                console.log('');
+                console.log('[Consola] ─── EVASIÓN ─────────────────────────────────────');
+                console.log('[Consola]   evasiontest [id_usuario]');
+                console.log('[Consola]   evasionsnapshot <id_usuario> [borrar]');
+                console.log('[Consola]   evasionrestore <id_usuario>');
+                console.log('[Consola]   vetos');
+                console.log('[Consola]   vetosweep');
                 console.log('');
             } else {
                 console.log(`[Consola] Comando desconocido: "${command}". Escribe "ayuda".`);
