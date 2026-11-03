@@ -4,11 +4,28 @@ const { getVeto, getVetoByUser } = require('../database/vetos');
 const { textoMensaje } = require('./limpiarTest');
 const { esTestMsg } = require('../database/testmsgs');
 
-const COLORS = {
-    ok: 0x57f287,
-    error: 0xed4245,
-    warning: 0xfee75c,
+// Color del embed = categoría del log (para agrupar de un vistazo en #logs-bot).
+// El estado (ok/warning/error) se muestra con el emoji del título, no con el color.
+const CATEGORIAS = {
+    plantillas: { label: 'Plantillas', color: 0x5865f2 },
+    vetos: { label: 'Vetos', color: 0xe67e22 },
+    oposiciones: { label: 'Oposiciones', color: 0x9b59b6 },
+    comandos: { label: 'Comandos', color: 0x95a5a6 },
 };
+
+const ESTADO_EMOJI = {
+    ok: '✅',
+    warning: '⚠️',
+    error: '❌',
+};
+
+function categoriaDe(nombre) {
+    const n = String(nombre || '').toLowerCase();
+    if (/veto|evasi|evad|tramitar|\bck\b/.test(n)) return 'vetos';
+    if (/plantilla|reclam|retirar|licencia|formulario/.test(n)) return 'plantillas';
+    if (/opos|convocatoria|inscripc|sugerencia|resultado|lista/.test(n)) return 'oposiciones';
+    return 'comandos';
+}
 
 const ACTION_NAMES = {
     'reclamar_': 'reclamar',
@@ -51,20 +68,14 @@ const SKIP_SUCCESS = new Set([
     'quitar_veto_',
 ]);
 
-function fechaManual() {
-    const d = new Date();
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    const ss = String(d.getSeconds()).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mo = String(d.getMonth() + 1).padStart(2, '0');
-    return `a las ${hh}:${mm}:${ss} del ${dd}/${mo}/${d.getFullYear()}`;
-}
-
-function tickEmoji(estado) {
-    if (estado === 'error') return `<:${process.env.emoji_redtick}>`;
-    if (estado === 'warning') return `<:${process.env.emoji_yellowtick}>`;
-    return `<:${process.env.emoji_greentick}>`;
+// Descripción compacta: solo lo relevante, en líneas cortas (sin la frase larga
+// con la fecha escrita a mano; la fecha ahora es el timestamp nativo del embed).
+function buildDescription({ estado, extra = '', motivo = '' }) {
+    const lineas = [];
+    if (motivo) lineas.push(`**Motivo:** ${motivo}`);
+    if (extra) lineas.push(`**Detalle:** ${extra}`);
+    if (estado === 'error' && !motivo) lineas.push('**Error:** fallo inesperado al ejecutarse; revisa la consola del servidor.');
+    return lineas.length ? lineas.join('\n') : null;
 }
 
 function chatNombre(interaction) {
@@ -209,21 +220,6 @@ function esTestDeCtx(ctx) {
     return false;
 }
 
-function buildDescription({ tipo, estado, nombre, userId, extra = '', motivo = '' }) {
-    const esAccion = tipo === 'accion';
-    const sujeto = esAccion ? `La acción de \`${nombre}\`` : `El comando ${nombre}`;
-    const quien = `el usuario <@${userId}> con id \`${userId}\``;
-    const cuando = fechaManual();
-
-    if (estado === 'warning') {
-        return `${sujeto} ha sido ${esAccion ? 'rechazada' : 'rechazado'}: **${motivo}** — ejecutado por ${quien} ${cuando}.`;
-    }
-    if (estado === 'error') {
-        return `${sujeto} ha fallado al ser ${esAccion ? 'realizada' : 'ejecutado'} por ${quien} ${cuando}.`;
-    }
-    return `${sujeto} ha sido ${esAccion ? 'realizada' : 'ejecutado'} por ${quien} ${cuando}${extra ? ` — ${extra}` : ''}.`;
-}
-
 async function logAction(ctx, opts = {}) {
     try {
         const {
@@ -245,17 +241,20 @@ async function logAction(ctx, opts = {}) {
 
         if (!client || !userId || !process.env.canallogs) return;
 
-        const tick = tickEmoji(estado);
-        const titulo = `${tipo === 'accion' ? 'Log de acción' : 'Log de comando'} — ${tick}`;
-        const descripcion = buildDescription({ tipo, estado, nombre, userId, extra, motivo });
+        const cat = CATEGORIAS[categoriaDe(nombre)] || CATEGORIAS.comandos;
+        const emoji = ESTADO_EMOJI[estado] || ESTADO_EMOJI.ok;
+        const descripcion = buildDescription({ estado, extra, motivo });
 
         console.log(`[LOG:${estado}] ${tipo === 'accion' ? 'accion' : 'comando'} «${nombre}» → #logs-bot`);
 
+        // Título = emoji de estado + nombre de la acción/comando (ya no el tipo genérico).
         const embed = new EmbedBuilder()
-            .setColor(COLORS[estado] || COLORS.ok)
-            .setTitle(titulo)
-            .setDescription(descripcion)
-            .setFooter({ text: `${userTag || 'Desconocido'} · ID: ${userId}` });
+            .setColor(cat.color)
+            .setTitle(`${emoji} ${nombre || (tipo === 'accion' ? 'Acción' : 'Comando')}`)
+            .setFooter({ text: `${cat.label} · ${userTag || 'Desconocido'} · ID: ${userId}` })
+            .setTimestamp();
+
+        if (descripcion) embed.setDescription(descripcion);
 
         const channel = await client.channels.fetch(process.env.canallogs);
         const silencioso = esTestDeCtx(ctx);
