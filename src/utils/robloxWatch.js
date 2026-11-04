@@ -1,13 +1,15 @@
 // ─── Avisos privados por DM sobre usuarios de Roblox ──────────────────────────
 // Consulta la API de presencia de Roblox cada 30 s y manda un DM al dueño del
 // bot cuando uno de los usuarios vigilados se conecta, se desconecta o entra o
-// sale de un juego; y si 2 de ellos coinciden en el mismo juego, avisa si
-// acaban en la MISMA sala o en salas distintas. Todo es por DM: nada pasa por
-// #logs-bot ni por canales.
+// sale de un juego; si 2 de ellos coinciden en el mismo juego, avisa si acaban
+// en la MISMA sala o en salas distintas; y si alguien añade o quita amigos, lo
+// avisa también (el recuento de amigos es público; la lista de nombres no lo es
+// sin cookie de Roblox). Todo es por DM: nada pasa por #logs-bot ni por canales.
 
 const OBJETIVOS = [4177772758, 7458338417, 435593627, 1819111834]; // ids de Roblox vigilados
 const DUENIO_DM = '991791054535802880';                 // id de Discord que recibe los avisos
 const INTERVALO_MS = 30 * 1000;
+const AMIGOS_CADA = 2;                                  // revisar el recuento de amigos cada N revisiones (~1 min)
 const PRESENCE_URL = 'https://presence.roblox.com/v1/presence/users';
 
 let intervalo = null;
@@ -22,6 +24,8 @@ const nombres = new Map();        // id Roblox -> nombre de usuario en Roblox
 const juegosPorPlace = new Map(); // placeId -> nombre del juego
 const detallesJuego = new Map();  // id Roblox -> { placeId, universeId, gameId } (solo si está en un juego)
 const pares = new Map();          // "idA_idB" (idA < idB) -> 'juntos' | 'separados'
+const amigos = new Map();         // id Roblox -> nº de amigos (recuento público)
+let contadorRevisiones = 0;
 let primeraRevision = true;
 
 // 0 = fuera, 1 = en la web, 2 = en un juego, 3 = en Roblox Studio.
@@ -143,6 +147,28 @@ async function revisarPares({ silencioso = false } = {}) {
     return lineas;
 }
 
+// Recuento de amigos (endpoint público; la lista de nombres exige cookie).
+// Devuelve las líneas de cambio para mandarlas juntas en un solo DM.
+async function revisarAmigos({ silencioso = false } = {}) {
+    const lineas = [];
+    for (const id of OBJETIVOS) {
+        let cuenta = null;
+        try {
+            const r = await fetch(`https://friends.roblox.com/v1/users/${id}/friends/count`);
+            if (r.ok) cuenta = (await r.json()).count;
+        } catch {}
+        if (cuenta === null || typeof cuenta !== 'number') continue;
+        const antes = amigos.get(id);
+        amigos.set(id, cuenta);
+        if (silencioso || antes === undefined || antes === cuenta) continue;
+        const nombre = await nombreDe(id);
+        lineas.push(cuenta > antes
+            ? `➕ ${nombre} ha añadido a alguien (amigos: ${antes} → ${cuenta})`
+            : `➖ ${nombre} ha quitado a alguien (amigos: ${antes} → ${cuenta})`);
+    }
+    return lineas;
+}
+
 async function enviarDm(texto) {
     try {
         if (!dmUser) dmUser = await client.users.fetch(DUENIO_DM);
@@ -193,6 +219,14 @@ async function vigilar() {
         // Coincidencias entre vigilados en el mismo juego (misma sala o separados).
         const lineasPares = await revisarPares({ silencioso: primeraRevision });
         if (lineasPares.length) await enviarDm(lineasPares.join('\n'));
+
+        // Recuento de amigos: avisa si alguien añade o quita a alguien.
+        contadorRevisiones++;
+        if (contadorRevisiones === 1 || contadorRevisiones % AMIGOS_CADA === 0) {
+            const lineasAmigos = await revisarAmigos({ silencioso: primeraRevision });
+            if (lineasAmigos.length) await enviarDm(lineasAmigos.join('\n'));
+        }
+
         primeraRevision = false;
 
         avisoApiFallo = false;
@@ -212,6 +246,8 @@ function reiniciar() {
     juegosPorPlace.clear();
     detallesJuego.clear();
     pares.clear();
+    amigos.clear();
+    contadorRevisiones = 0;
     primeraRevision = true;
     avisoApiFallo = false;
 }
@@ -227,5 +263,5 @@ function iniciarRobloxWatch(cli) {
 
 module.exports = {
     iniciarRobloxWatch,
-    __test: { vigilar, claveDe, describir, nombreDe, nombreDeJuego, reiniciar },
+    __test: { vigilar, claveDe, describir, nombreDe, nombreDeJuego, revisarAmigos, reiniciar },
 };
