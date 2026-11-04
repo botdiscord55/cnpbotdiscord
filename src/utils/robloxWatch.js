@@ -3,7 +3,7 @@
 // bot cuando uno de los usuarios vigilados se conecta, se desconecta o entra o
 // sale de un juego. Todo es por DM: nada pasa por #logs-bot ni por canales.
 
-const OBJETIVOS = [4177772758, 7458338417, 435593627]; // ids de Roblox vigilados
+const OBJETIVOS = [4177772758, 7458338417, 435593627, 1819111834]; // ids de Roblox vigilados
 const DUENIO_DM = '991791054535802880';                 // id de Discord que recibe los avisos
 const INTERVALO_MS = 30 * 1000;
 const PRESENCE_URL = 'https://presence.roblox.com/v1/presence/users';
