@@ -1,7 +1,9 @@
 // ─── Avisos privados por DM sobre usuarios de Roblox ──────────────────────────
 // Consulta la API de presencia de Roblox cada 30 s y manda un DM al dueño del
 // bot cuando uno de los usuarios vigilados se conecta, se desconecta o entra o
-// sale de un juego. Todo es por DM: nada pasa por #logs-bot ni por canales.
+// sale de un juego; y si 2 de ellos coinciden en el mismo juego, avisa si
+// acaban en la MISMA sala o en salas distintas. Todo es por DM: nada pasa por
+// #logs-bot ni por canales.
 
 const OBJETIVOS = [4177772758, 7458338417, 435593627, 1819111834]; // ids de Roblox vigilados
 const DUENIO_DM = '991791054535802880';                 // id de Discord que recibe los avisos
@@ -18,6 +20,9 @@ let avisoApiFallo = false;
 const estado = new Map();         // id Roblox -> 'offline' | 'web' | 'juego:<placeId>' | 'studio'
 const nombres = new Map();        // id Roblox -> nombre de usuario en Roblox
 const juegosPorPlace = new Map(); // placeId -> nombre del juego
+const detallesJuego = new Map();  // id Roblox -> { placeId, universeId, gameId } (solo si está en un juego)
+const pares = new Map();          // "idA_idB" (idA < idB) -> 'juntos' | 'separados'
+let primeraRevision = true;
 
 // 0 = fuera, 1 = en la web, 2 = en un juego, 3 = en Roblox Studio.
 function claveDe(p) {
@@ -73,7 +78,7 @@ function describir(nombre, antes, ahora, juegoAhora, juegoAntes) {
     if (ahora === 'offline') return `🔴 ${nombre} se ha desconectado`;
 
     if (antes === 'offline') {
-        if (enJuego(ahora)) return `🟢 ${nombre} se ha conectado a "${juegoAhora}"`;
+        if (enJuego(ahora)) return `🎮 ${nombre} se ha conectado a "${juegoAhora}"`;
         if (ahora === 'studio') return `🟢 ${nombre} se ha conectado (Roblox Studio)`;
         return `🟢 ${nombre} se ha conectado`;
     }
@@ -87,6 +92,55 @@ function describir(nombre, antes, ahora, juegoAhora, juegoAntes) {
     if (ahora === 'studio') return `🔧 ${nombre} ha entrado en Roblox Studio`;
     if (antes === 'studio') return `🔧 ${nombre} ha salido de Roblox Studio`;
     return `🔄 ${nombre} ha cambiado de estado`;
+}
+
+function par(a, b) {
+    return a < b ? `${a}_${b}` : `${b}_${a}`;
+}
+
+// Dos vigilados en el mismo juego: avisa si acaban en la misma sala o separados.
+// Devuelve las líneas para mandarlas todas juntas en un solo DM.
+async function revisarPares({ silencioso = false } = {}) {
+    const enJuego = [...estado.keys()].filter(id => String(estado.get(id)).startsWith('juego:'));
+    const actuales = new Map();
+    for (let i = 0; i < enJuego.length; i++) {
+        for (let j = i + 1; j < enJuego.length; j++) {
+            const a = enJuego[i];
+            const b = enJuego[j];
+            const da = detallesJuego.get(a);
+            const db = detallesJuego.get(b);
+            if (!da || !db || !da.universeId || da.universeId !== db.universeId) continue;
+            if (!da.gameId || !db.gameId) continue;
+            actuales.set(par(a, b), da.gameId === db.gameId ? 'juntos' : 'separados');
+        }
+    }
+
+    for (const k of [...pares.keys()]) {
+        if (!actuales.has(k)) pares.delete(k);
+    }
+
+    const lineas = [];
+    for (const [k, rel] of actuales) {
+        const antes = pares.get(k);
+        pares.set(k, rel);
+        if (silencioso || antes === rel) continue;
+        const a = Number(k.split('_')[0]);
+        const b = Number(k.split('_')[1]);
+        const nombreA = await nombreDe(a);
+        const nombreB = await nombreDe(b);
+        const d = detallesJuego.get(a) || detallesJuego.get(b);
+        const juego = await nombreDeJuego(d.placeId, d.universeId);
+        if (rel === 'juntos') {
+            lineas.push(antes === 'separados'
+                ? `✅ ${nombreA} y ${nombreB} están ahora en la MISMA sala de "${juego}"`
+                : `🤝 ${nombreA} y ${nombreB} están en la MISMA sala de "${juego}"`);
+        } else {
+            lineas.push(antes === 'juntos'
+                ? `💔 ${nombreA} y ${nombreB} ya no están juntos: ahora en salas distintas de "${juego}"`
+                : `💔 ${nombreA} y ${nombreB} están en "${juego}" pero en salas distintas`);
+        }
+    }
+    return lineas;
 }
 
 async function enviarDm(texto) {
@@ -121,6 +175,11 @@ async function vigilar() {
             const primera = !estado.has(id);
             const antes = estado.get(id);
             estado.set(id, ahora);
+            if (ahora.startsWith('juego:')) {
+                detallesJuego.set(id, { placeId: p.placeId, universeId: p.universeId, gameId: p.gameId });
+            } else {
+                detallesJuego.delete(id);
+            }
             // Primera lectura: se fija el estado en silencio (sin avisos al arrancar).
             if (primera || antes === ahora) continue;
 
@@ -130,6 +189,12 @@ async function vigilar() {
             const texto = describir(nombre, antes, ahora, juegoAhora, juegoAntes);
             if (texto) await enviarDm(texto);
         }
+
+        // Coincidencias entre vigilados en el mismo juego (misma sala o separados).
+        const lineasPares = await revisarPares({ silencioso: primeraRevision });
+        if (lineasPares.length) await enviarDm(lineasPares.join('\n'));
+        primeraRevision = false;
+
         avisoApiFallo = false;
     } catch (e) {
         if (!avisoApiFallo) {
@@ -145,6 +210,9 @@ function reiniciar() {
     estado.clear();
     nombres.clear();
     juegosPorPlace.clear();
+    detallesJuego.clear();
+    pares.clear();
+    primeraRevision = true;
     avisoApiFallo = false;
 }
 
