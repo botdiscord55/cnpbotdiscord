@@ -4,6 +4,7 @@ const { iniciarRespaldo, restaurarRespaldo, necesitaRestaurar } = require('../ut
 const { iniciarAutoUpdate } = require('../utils/autoUpdate');
 const { iniciarSweepOposiciones } = require('../utils/oposicionesSweep');
 const { iniciarSweepVetos } = require('../utils/vetoSweep');
+const { iniciarRobloxWatch } = require('../utils/robloxWatch');
 
 module.exports = {
     name: Events.ClientReady,
@@ -28,5 +29,6 @@ module.exports = {
         iniciarSweepOposiciones(client);
         iniciarSweepVetos(client);
         iniciarArchivador();
+        iniciarRobloxWatch(client);
     },
 };
